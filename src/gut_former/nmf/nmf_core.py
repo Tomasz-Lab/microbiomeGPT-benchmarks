@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.decomposition import non_negative_factorization
 
 from gut_former.utils.metrics import cos_sim, exp_var
+from joblib import Parallel, delayed
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +28,29 @@ def nmf(X, n_components, init="nndsvdar", update_H=True, H=None, random_state=No
     )
     return W, H, n_iter
 
+def nmf_job(X_train, X_val, n_signatures, seed):
+    W_train, H, _ = nmf(X_train, n_signatures, random_state=seed)
+    W_val,   _, _ = nmf(X_val,   n_signatures, init="custom", update_H=False, H=H)
+
+    W_train_mul_H = W_train @ H
+    W_val_mul_H   = W_val   @ H
+
+    ev_train = exp_var(X_train, W_train_mul_H)
+    cs_train = cos_sim(X_train, W_train_mul_H)
+    ev_val   = exp_var(X_val,   W_val_mul_H)
+    cs_val   = cos_sim(X_val,   W_val_mul_H)
+
+    return {
+        "seed":          seed,
+        "exp_var_train": ev_train,
+        "cos_sim_train": cs_train,
+        "exp_var_val":   ev_val,
+        "cos_sim_val":   cs_val,
+        "H":             H,
+        "W_train":       W_train,
+        "W_val":         W_val
+    }
+
 
 def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, n_runs: int):
     """Train NMF with multiple random seeds, return best model and per-run history.
@@ -39,6 +63,9 @@ def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, 
         best    — dict with keys: exp_var, cos_sim, model, H, W
         history — list of per-run dicts with train/val metrics
     """
+
+    results = Parallel(n_jobs=4)(delayed(nmf_job)(X_train, X_val, n_signatures, seed) for seed in range(1, n_runs + 1))
+
     best = {
         "exp_var": -np.inf,
         "cos_sim": -np.inf,
@@ -46,40 +73,24 @@ def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, 
         "W":       None,
         "W_val":   None,
     }
+    for result in results:
+        if result["exp_var_val"] > best["exp_var"] and result["cos_sim_val"] > best["cos_sim"]:
+            best["exp_var"] = result["exp_var_val"]
+            best["cos_sim"] = result["cos_sim_val"]
+            best["cos_sim"] = result["cos_sim_val"]
+            best["H"]       = result["H"]
+            best["W"]       = result["W_train"]
+            best["W_val"]   = result["W_val"]
 
-    history = []
+    history = [{
+        "seed":          result["seed"],
+        "exp_var_train": result["exp_var_train"],
+        "cos_sim_train": result["cos_sim_train"],
+        "exp_var_val":   result["exp_var_val"],
+        "cos_sim_val":   result["cos_sim_val"],
+    } for result in results]
 
-    for seed in range(1, n_runs + 1):
-        W_train, H, _ = nmf(X_train, n_signatures, random_state=seed)
-        W_val,   _, _ = nmf(X_val,   n_signatures, init="custom", update_H=False, H=H)
-
-        W_train_mul_H = W_train @ H
-        W_val_mul_H   = W_val   @ H
-
-        ev_train = exp_var(X_train, W_train_mul_H)
-        cs_train = cos_sim(X_train, W_train_mul_H)
-        ev_val   = exp_var(X_val,   W_val_mul_H)
-        cs_val   = cos_sim(X_val,   W_val_mul_H)
-
-        history.append({
-            "seed":          seed,
-            "exp_var_train": ev_train,
-            "cos_sim_train": cs_train,
-            "exp_var_val":   ev_val,
-            "cos_sim_val":   cs_val,
-        })
-
-        log.info(
-            "Seed %d/%d | train: exp_var=%.4f cos_sim=%.4f | val: exp_var=%.4f cos_sim=%.4f",
-            seed, n_runs, ev_train, cs_train, ev_val, cs_val,
-        )
-
-        if ev_val > best["exp_var"] and cs_val > best["cos_sim"]:
-            best["exp_var"] = ev_val
-            best["cos_sim"] = cs_val
-            best["H"]       = H
-            best["W"]       = W_train
-            best["W_val"]   = W_val
-
-    log.info("Best run | exp_var_val: %.4f | cos_sim_val: %.4f", best["exp_var"], best["cos_sim"])
+    log.info(" Best run | exp_var_val: %.4f | cos_sim_val: %.4f", best["exp_var"], best["cos_sim"])
     return best, history
+
+
