@@ -53,10 +53,13 @@ def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, 
         W_train, H, _ = nmf(X_train, n_signatures, random_state=seed)
         W_val,   _, _ = nmf(X_val,   n_signatures, init="custom", update_H=False, H=H)
 
-        ev_train = exp_var(X_train, W_train @ H)
-        cs_train = cos_sim(X_train, W_train @ H)
-        ev_val   = exp_var(X_val,   W_val   @ H)
-        cs_val   = cos_sim(X_val,   W_val   @ H)
+        W_train_mul_H = W_train @ H
+        W_val_mul_H   = W_val   @ H
+
+        ev_train = exp_var(X_train, W_train_mul_H)
+        cs_train = cos_sim(X_train, W_train_mul_H)
+        ev_val   = exp_var(X_val,   W_val_mul_H)
+        cs_val   = cos_sim(X_val,   W_val_mul_H)
 
         history.append({
             "seed":          seed,
