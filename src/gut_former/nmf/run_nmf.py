@@ -6,7 +6,7 @@ import pandas as pd
 from gut_former.utils.project_paths import find_data_path, find_output_path
 from gut_former.utils.log_config import setup_logging
 from gut_former.utils.data_prep import train_val_split, collapse_to_genus, filter_samples
-from gut_former.nmf.nmf_core import run_nmf_loop
+from gut_former.nmf.nmf_core import NMF, NMFConfig
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,11 @@ def main():
     log.info("Train: %s | Val: %s", X_train.shape, X_val.shape)
 
     # Run NMF
-    best, history = run_nmf_loop(X_train, X_val, args.n_signatures, args.n_runs)
+    nmf_config = NMFConfig(
+        n_components=args.n_signatures,
+        n_runs=args.n_runs,
+    )
+    nmf_results = NMF(nmf_config).fit(X_train, X_val)
 
     # Save outputs
     output_path = find_output_path() / "nmf"
@@ -61,10 +65,10 @@ def main():
     n   = args.n_signatures
     ds  = args.dataset
     tag = f"{args.type}_{args.filter}"
-    pd.DataFrame(best["H"],     columns=X_train.columns).to_csv(output_path / f"H_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(best["W"],     index=X_train.index)    .to_csv(output_path / f"W_train_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(best["W_val"], index=X_val.index)      .to_csv(output_path / f"W_val_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(history)                           .to_csv(output_path / f"nmf_stats_{n}_{ds}_{tag}.csv", index=False)
+    pd.DataFrame(nmf_results.components_,     columns=X_train.columns).to_csv(output_path / f"H_{n}_{ds}_{tag}.csv")
+    pd.DataFrame(nmf_results.W_train_,     index=X_train.index)    .to_csv(output_path / f"W_train_{n}_{ds}_{tag}.csv")
+    pd.DataFrame(nmf_results.W_val_, index=X_val.index)      .to_csv(output_path / f"W_val_{n}_{ds}_{tag}.csv")
+    pd.DataFrame(nmf_results.history_)                           .to_csv(output_path / f"nmf_stats_{n}_{ds}_{tag}.csv", index=False)
 
     log.info(
         "Done. Saved to %s:\n"
