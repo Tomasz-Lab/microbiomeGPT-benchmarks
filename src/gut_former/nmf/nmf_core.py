@@ -68,6 +68,16 @@ class NMF(BaseEstimator, TransformerMixin):
             random_state=seed,
         )
 
+        if np.isnan(W).any() or np.isnan(H).any():
+            log.warning("NMF run (seed %d) returned NaN values.", seed)
+            return NMFFitResult(
+                seed=seed,
+                exp_var=np.nan,
+                cos_sim=np.nan,
+                W=W,
+                H=H,
+            )
+
         pred = W @ H
 
         return NMFFitResult(
