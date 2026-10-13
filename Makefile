@@ -5,7 +5,6 @@ help:
 	@echo ""
 	@echo "Setup"
 	@echo "  make install   - Install dependencies"
-	@echo "  make clean     - Remove virtual environment"
 	@echo ""
 	@echo "Quality"
 
@@ -26,10 +25,7 @@ help:
 # -----------------------------------------
 
 install:
-	poetry install
-
-clean:
-	poetry env remove python || true
+	uv sync 
 
 # -----------------------------------------
 # Quality
@@ -40,11 +36,11 @@ check: fix typecheck
 
 
 typecheck:
-	poetry run mypy .
+	uv run mypy .
 
 fix:
-	poetry run ruff check . --fix
-	poetry run ruff format .
+	uv run ruff check . --fix
+	uv run ruff format .
 
 
 
@@ -54,8 +50,8 @@ fix:
 # -----------------------------------------
 
 kernel:
-	poetry run python -m ipykernel install --user --name=microbiome-gpt --display-name "Python (microbiome-gpt)"
+	uv run python -m ipykernel install --user --name=microbiome-gpt --display-name "Python (microbiome-gpt)"
 
 jupyter:
-	poetry run jupyter notebook
+	uv run jupyter notebook
 
