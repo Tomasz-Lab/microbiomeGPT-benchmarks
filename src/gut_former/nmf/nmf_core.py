@@ -52,7 +52,7 @@ def nmf_job(X_train, X_val, n_signatures, seed):
     }
 
 
-def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, n_runs: int):
+def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, n_runs: int, n_jobs: int = -2):
     """Train NMF with multiple random seeds, return best model and per-run history.
 
     NMF is non-convex and can get stuck in local minima — multiple random
@@ -64,7 +64,7 @@ def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, 
         history — list of per-run dicts with train/val metrics
     """
 
-    results = Parallel(n_jobs=4)(delayed(nmf_job)(X_train, X_val, n_signatures, seed) for seed in range(1, n_runs + 1))
+    results = Parallel(n_jobs=n_jobs)(delayed(nmf_job)(X_train, X_val, n_signatures, seed) for seed in range(1, n_runs + 1))
 
     best = {
         "exp_var": -np.inf,
@@ -73,8 +73,15 @@ def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, 
         "W":       None,
         "W_val":   None,
     }
-    for result in results:
-        if result["exp_var_val"] > best["exp_var"] and result["cos_sim_val"] > best["cos_sim"]:
+    for result in results:        
+        if (
+            result["exp_var_val"] > best["exp_var"] and 
+            result["cos_sim_val"] > best["cos_sim"] and
+            not np.isnan(result["exp_var_val"]) and
+            not np.isnan(result["cos_sim_val"]) and
+            not np.isinf(result["exp_var_val"]) and
+            not np.isinf(result["cos_sim_val"])
+        ):
             best["exp_var"] = result["exp_var_val"]
             best["cos_sim"] = result["cos_sim_val"]
             best["cos_sim"] = result["cos_sim_val"]
