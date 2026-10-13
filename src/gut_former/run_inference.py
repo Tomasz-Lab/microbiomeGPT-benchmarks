@@ -22,12 +22,12 @@ def main():
     config = InferenceConfig()
     p = argparse.ArgumentParser()
 
-    p.add_argument("--dataset", type=str, default=config.data.dataset, help="TODO")
-    p.add_argument("--embedding_dim", type=int, default=config.model.embedding_dim, help="TODO")
-    p.add_argument("--latent_dim", type=int, default=config.model.latent_dim, help="TODO")
+    p.add_argument("--dataset", type=str, default=config.data.dataset, help="Name of the dataset to use for inference.")
+    p.add_argument("--embedding_dim", type=int, default=config.model.embedding_dim, help="Dimensionality of the input embeddings.")
+    p.add_argument("--latent_dim", type=int, default=config.model.latent_dim, help="Dimensionality of the model's latent representation.")
     output_path = find_output_path()
     checkpoint = config.checkpoint or f"{output_path}/checkpoint_sample.pt"
-    p.add_argument("--checkpoint", type=str, default=checkpoint, help="TODO")
+    p.add_argument("--checkpoint", type=str, default=checkpoint, help="Path to the trained model checkpoint used for inference.")
     args = p.parse_args()
 
     # Loading & Preparing Data

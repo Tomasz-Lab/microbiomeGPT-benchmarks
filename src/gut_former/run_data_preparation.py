@@ -15,7 +15,7 @@ def main():
     # Handling Args
     p = argparse.ArgumentParser()
 
-    p.add_argument("--dataset", type=str, default="raw", help="TODO")
+    p.add_argument("--dataset", type=str, default="raw", help="Name of the dataset to prepare.")
 
     args = p.parse_args()
 
