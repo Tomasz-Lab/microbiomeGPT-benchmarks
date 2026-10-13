@@ -13,16 +13,38 @@ Developed by TomaszLab.
 
 ### 📋 Prerequisites
 
-- [pyenv](https://github.com/pyenv/pyenv) — Python version management
-- [Poetry](https://python-poetry.org/) — Dependency management
+- [uv](https://docs.astral.sh/uv/) — Dependency & Python management
 
-Both can be installed via `brew install pyenv poetry`.
+[Here](https://docs.astral.sh/uv/getting-started/installation/) are instruction how it can be installed.
 
 ### ⚙️ Installation
 
+Set up the environment and install all dependencies:
+
 ```bash
-pyenv install 3.12  # if not already installed
-make install
+uv sync
+```
+> Note: uv sync will automatically download the correct Python version if it is not already installed.
+
+### 🏃 Running Code in the Environment
+
+You can interact with the virtual environment in two ways:
+
+**Option 1:** Using uv run (Recommended)
+
+```bash
+uv run <command>
+# Examples:
+# uv run python main.py
+# uv run pytest
+```
+
+**Option 2:** Manual Activation
+
+Execute commands or scripts directly within the project's environment without manual activation:
+
+```bash
+source .venv/bin/activate
 ```
 
 ## 📂 Data
@@ -45,7 +67,7 @@ A sample dataset (`--dataset sample`) is included in the repository to get start
 ### Train from scratch
 
 ```bash
-poetry run python src/gut_former/run_training.py
+uv run python src/gut_former/run_training.py
 ```
 
 **Options:**
@@ -68,7 +90,7 @@ poetry run python src/gut_former/run_training.py
 Continue training from an existing checkpoint (replace the checkpoint path with your own):
 
 ```bash
-nohup poetry run python src/gut_former/run_training.py \
+nohup uv run python src/gut_former/run_training.py \
   --dataset my_dataset \
   --epochs 1000 \
   --checkpoint output/{date}_{dataset}_checkpoint.pt \
@@ -84,7 +106,7 @@ tail -f output/training.log
 ### Inference
 
 ```bash
-poetry run python src/gut_former/run_inference.py \
+uv run python src/gut_former/run_inference.py \
   --dataset sample \
   --checkpoint output/20260412_sample_checkpoint.pt
 ```
@@ -99,7 +121,7 @@ poetry run python src/gut_former/run_inference.py \
 NMF decomposes microbiome data into latent signatures. Supports both pathway and taxonomy data, with optional filtering by health status.
 
 ```bash
-poetry run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
+uv run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
 ```
 
 **Options:**
@@ -116,10 +138,10 @@ poetry run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
 
 ```bash
 # Pathway NMF, all samples
-poetry run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
+uv run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
 
 # Taxonomy NMF, healthy samples only
-poetry run python src/gut_former/nmf/run_nmf.py --type taxonomy --dataset sample --filter healthy
+uv run python src/gut_former/nmf/run_nmf.py --type taxonomy --dataset sample --filter healthy
 ```
 
 **Outputs** saved to `output/nmf/`:
@@ -133,7 +155,7 @@ poetry run python src/gut_former/nmf/run_nmf.py --type taxonomy --dataset sample
 Bi-Cross-Validation selects the optimal number of NMF signatures for pathway data by evaluating reconstruction quality on held-out data blocks across a range of ranks. For taxonomy, the number of signatures is established in the literature.
 
 ```bash
-poetry run python src/gut_former/nmf/run_bicv.py --dataset sample
+uv run python src/gut_former/nmf/run_bicv.py --dataset sample
 ```
 
 **Options:**
