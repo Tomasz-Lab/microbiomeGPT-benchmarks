@@ -1,7 +1,5 @@
 parameters:
   n_components: 8
-  n_components_min: 2  # to be remove later after bicv refactor
-  n_components_max: 15 # to be remove later after bicv refactor
   n_runs: 10
   init: nndsvdar
   solver: mu

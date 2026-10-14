@@ -1,0 +1,4 @@
+_target_: gut_former.nmf.run_nmf.run_nmf_task
+_partial_: true
+
+name: run_nmf

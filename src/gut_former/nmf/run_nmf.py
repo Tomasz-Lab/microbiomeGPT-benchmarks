@@ -40,8 +40,7 @@ def load_data_nmf_csv(data_path: str, metadata_path: str, kind: str, subset: str
 def load_data_nmf_db():
     pass
 
-@hydra.main(version_base="1.3", config_path="../../../conf", config_name="config")
-def main(cfg: DictConfig):
+def run_nmf_task(cfg: DictConfig, **_):
     setup_logging()
 
     log.info("Starting NMF script..")
@@ -77,7 +76,3 @@ def main(cfg: DictConfig):
         "  - nmf_stats_%d_%s_%s.csv",
         output_path, n, ds, tag, n, ds, tag, n, ds, tag, n, ds, tag,
     )
-
-
-if __name__ == "__main__":
-    main()
