@@ -27,7 +27,4 @@ jobs:
           args: 'check --output-format=github .'
 
       - name: Check Ruff formatting
-        uses: astral-sh/ruff-action@v4.1.0
-        with:
-          version-file: uv.lock
-          args: 'format --check .'
+        run: ruff format --check .
