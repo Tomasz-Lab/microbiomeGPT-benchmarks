@@ -27,4 +27,4 @@ jobs:
           args: 'check --output-format=github .'
 
       - name: Check Ruff formatting
-        run: ruff format --check .
+        run: ruff format --check --diff .
