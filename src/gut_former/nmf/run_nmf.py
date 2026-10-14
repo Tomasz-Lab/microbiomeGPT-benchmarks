@@ -46,15 +46,6 @@ def main(cfg: DictConfig):
 
     log.info("Starting NMF script..")
 
-    # p = argparse.ArgumentParser()
-    # p.add_argument("--type",         type=str, required=True,   help="Data type: pathways | taxonomy", choices=["pathways", "taxonomy"])
-    # p.add_argument("--dataset",      type=str, default="sample", help="Dataset name")
-    # p.add_argument("--n_signatures", type=int, default=8,        help="Number of NMF components")
-    # p.add_argument("--n_runs",       type=int, default=100,      help="Number of NMF runs per seed")
-    # p.add_argument("--filter",       type=str, default="all",    help="Sample subset: all | healthy | non-healthy",
-    #                choices=["all", "healthy", "non-healthy"])
-    # args = p.parse_args()
-
     # Load & preprocess
     X = hydra.utils.instantiate(cfg.dataset)
     log.info("Data loaded | shape: %s", X.shape)
