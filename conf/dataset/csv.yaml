@@ -1,0 +1,9 @@
+_target_: gut_former.nmf.run_nmf.load_data_nmf_csv
+
+dir: ${oc.env.PROJECT_ROOT,.}/data/
+type: pathway
+name: sample
+data_path: ${dir}/${type}_${name}.csv
+subset: all
+
+metadata_path: ${dir}/metadata_${name}.csv
