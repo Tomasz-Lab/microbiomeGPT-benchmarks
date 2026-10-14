@@ -157,8 +157,7 @@ def run_cv(folds, signatures, outdir, n_runs=50):
     log.info("Best signature: %d (evar_mean=%.3f)", best, summary.loc[best, "evar_mean"])
 
 
-@hydra.main(version_base="1.3", config_path="../../../conf", config_name="config")
-def main(cfg: DictConfig):
+def run_bicv_task(cfg: DictConfig, **_):
     setup_logging()
 
     log.info("Starting biCV script..")
@@ -174,7 +173,7 @@ def main(cfg: DictConfig):
 
     log.info("Output directory: %s", output_path)
 
-    signatures = list(range(cfg.model.parameters.n_components_min, cfg.model.parameters.n_components_max + 1))
+    signatures = list(range(cfg.task.n_components_min, cfg.task.n_components_max + 1))
     log.info("Signatures to test: %s", signatures)
 
     blocks   = shuffle_and_split(X.values)
@@ -185,7 +184,3 @@ def main(cfg: DictConfig):
     run_cv(folds_by_idx, signatures, output_path, n_runs=cfg.model.parameters.n_runs)
     elapsed = time.time() - t_start
     log.info("Done in %dm %ds", elapsed // 60, elapsed % 60)
-
-
-if __name__ == "__main__":
-    main()
