@@ -67,3 +67,8 @@ figures/*
 # Output (keep directory, ignore contents)
 output/*
 !output/.gitkeep
+outputs_hydra/*
+
+# environment files
+.env
+
