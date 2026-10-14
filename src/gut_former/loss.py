@@ -19,7 +19,7 @@ class CompositeLoss(nn.Module):
 
         t_loss = mse_loss(dist_mtx(xt_pred), dist_mtx(xt))
         p_loss = mse_loss(dist_mtx(xp_pred), dist_mtx(xp))
-        dist =  t_loss + p_loss
+        dist = t_loss + p_loss
 
         # Variance Loss
         t_var = torch.abs(xt.var() - xt_pred.var())
