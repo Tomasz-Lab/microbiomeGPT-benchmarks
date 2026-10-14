@@ -1,5 +1,5 @@
-__target__: gut_former.model.BacteriaModel
-__partial__: true
+_target_: gut_former.model.BacteriaModel
+_partial_: true
 
 model_version: v1-0-0
 embedding_dim: 128

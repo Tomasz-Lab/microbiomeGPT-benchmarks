@@ -1,0 +1,10 @@
+_target_: gut_former.run_training.run_training
+_partial_: true
+
+name: gut_former_training
+
+batch_size: 16
+learning_rate: 1.893292917167e-4
+epochs: 1
+checkpoint_path: none
+verbose: true
