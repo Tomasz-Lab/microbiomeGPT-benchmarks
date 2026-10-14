@@ -68,6 +68,7 @@ figures/*
 output/*
 !output/.gitkeep
 outputs_hydra/*
+multirun_hydra/*
 
 # environment files
 .env
