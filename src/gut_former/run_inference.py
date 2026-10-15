@@ -1,18 +1,14 @@
-import argparse
 import logging
+from pathlib import Path
 
 import hydra
-from omegaconf import DictConfig
 import pandas as pd
 import torch
-
-from gut_former.config import InferenceConfig
-from gut_former.model import BacteriaModel
-from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path, find_output_path
-from pathlib import Path
 from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 
+from gut_former.utils.log_config import setup_logging
+from gut_former.utils.project_paths import find_data_path
 
 log = logging.getLogger(__name__)
 
@@ -28,8 +24,18 @@ def run_inference(cfg: DictConfig, **_):
 
     # Loading & Preparing Data
     data_path = find_data_path()
-    t_df = pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False).fillna(0).sort_index() * 100
-    p_df = pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False).fillna(0).sort_index() * 100
+    t_df = (
+        pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
+        .fillna(0)
+        .sort_index()
+        * 100
+    )
+    p_df = (
+        pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
+        .fillna(0)
+        .sort_index()
+        * 100
+    )
 
     t_tensor = torch.tensor(t_df.values, dtype=torch.float32).unsqueeze(-1)
     p_tensor = torch.tensor(p_df.values, dtype=torch.float32).unsqueeze(-1)
@@ -38,13 +44,12 @@ def run_inference(cfg: DictConfig, **_):
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model_builder = hydra.utils.instantiate(
-        cfg.model, 
-        
+        cfg.model,
     )
 
     model = model_builder(
-        num_pathways=p_df.shape[1], 
-        num_bacteria=t_df.shape[1], 
+        num_pathways=p_df.shape[1],
+        num_bacteria=t_df.shape[1],
     ).to(DEVICE)
 
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
@@ -57,12 +62,16 @@ def run_inference(cfg: DictConfig, **_):
     t_pred, p_pred, latent = model(p_tensor, t_tensor)
 
     # Storing outputs
-    t_pred_df = pd.DataFrame(t_pred.detach().cpu().numpy().squeeze(-1), index=t_df.index, columns=t_df.columns)
+    t_pred_df = pd.DataFrame(
+        t_pred.detach().cpu().numpy().squeeze(-1), index=t_df.index, columns=t_df.columns
+    )
     t_pred_df.index.name = t_df.index.name
     t_output_path = f"{output_path}/pred_taxonomy_{cfg.dataset.name}.csv"
     t_pred_df.to_csv(t_output_path, index=True)
 
-    p_pred_df = pd.DataFrame(p_pred.detach().cpu().numpy().squeeze(-1), index=p_df.index, columns=p_df.columns)
+    p_pred_df = pd.DataFrame(
+        p_pred.detach().cpu().numpy().squeeze(-1), index=p_df.index, columns=p_df.columns
+    )
     p_pred_df.index.name = p_df.index.name
     p_output_path = f"{output_path}/pred_pathways_{cfg.dataset.name}.csv"
     p_pred_df.to_csv(p_output_path, index=True)
@@ -73,9 +82,9 @@ def run_inference(cfg: DictConfig, **_):
     latent_output_path = f"{output_path}/latent_{cfg.dataset.name}.csv"
     latent_df.to_csv(latent_output_path, index=True)
 
-    log.info("Inference completed.\n"
-             "Saved outputs:\n"
-             "  - Latent: %s\n"
-             "  - P_pred:  %s\n"
-             "  - T_pred:  %s",
-             latent_output_path, p_output_path, t_output_path)
+    log.info(
+        "Inference completed.\nSaved outputs:\n  - Latent: %s\n  - P_pred:  %s\n  - T_pred:  %s",
+        latent_output_path,
+        p_output_path,
+        t_output_path,
+    )

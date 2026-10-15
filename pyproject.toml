@@ -62,6 +62,7 @@ select = [
     "UP",   # pyupgrade (modern Python syntax)
 ]
 ignore = ["E501"]  # Let formatter handle line length
+exclude = ["*.ipynb"] #TODO: Remove when notebook are removed from repo
 
 [tool.ruff.format]
 quote-style = "double"

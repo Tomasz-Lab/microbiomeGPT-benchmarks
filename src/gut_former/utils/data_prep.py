@@ -20,7 +20,7 @@ def collapse_to_genus(df: pd.DataFrame) -> pd.DataFrame:
     genus_names = df.columns.str.split("|").str[5]
     genus_df = df.copy()
     genus_df.columns = genus_names
-    genus_df = genus_df.T.groupby(level=0).sum().T   # sum duplicate genera
+    genus_df = genus_df.T.groupby(level=0).sum().T  # sum duplicate genera
     genus_df = genus_df.div(genus_df.sum(axis=1), axis=0)  # renormalize to relative abundance
     return genus_df.dropna()
 

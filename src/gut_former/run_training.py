@@ -1,25 +1,21 @@
-import argparse
 import logging
 from datetime import date
+from pathlib import Path
 
 import hydra
-from omegaconf import DictConfig
 import pandas as pd
 import torch
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 from torch.nn.functional import mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from gut_former.config import TrainingConfig
 from gut_former.dataset import BacteriaDataset
 from gut_former.loss import CompositeLoss
-from gut_former.model import BacteriaModel
 from gut_former.utils.data_prep import train_val_split
 from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path, find_output_path
-
-from pathlib import Path
-from hydra.core.hydra_config import HydraConfig
+from gut_former.utils.project_paths import find_data_path
 
 log = logging.getLogger(__name__)
 
@@ -64,13 +60,12 @@ def run_training(cfg: DictConfig, **_):
     # Defining Model
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_builder = hydra.utils.instantiate(
-        cfg.model, 
-        
+        cfg.model,
     )
 
     model = model_builder(
-        num_pathways=Xp_df.shape[1], 
-        num_bacteria=Xt_df.shape[1], 
+        num_pathways=Xp_df.shape[1],
+        num_bacteria=Xt_df.shape[1],
     ).to(DEVICE)
 
     optimizer = Adam(model.parameters(), lr=cfg.task.learning_rate, weight_decay=0.001)
