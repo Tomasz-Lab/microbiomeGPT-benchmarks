@@ -10,4 +10,4 @@ experiment:
   name: gut_former_training
 
 task:
-  checkpoint_path: ${hydra:runtime.output_dir}/${dataset.name}_checkpoint.pt
+  checkpoint_path: none

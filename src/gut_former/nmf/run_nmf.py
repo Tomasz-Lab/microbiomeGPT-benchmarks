@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from gut_former.nmf.nmf_core import NMF, NMFConfig
+from gut_former.nmf.nmf_core import NMF
 from gut_former.utils.data_prep import collapse_to_genus, filter_samples, train_val_split
 from gut_former.utils.log_config import setup_logging
 
@@ -52,11 +52,7 @@ def run_nmf_task(cfg: DictConfig, **_):
     log.info("Train: %s | Val: %s", X_train.shape, X_val.shape)
 
     # Run NMF
-    nmf_config = NMFConfig(
-        n_components=cfg.model.parameters.n_components,
-        n_runs=cfg.model.parameters.n_runs,
-    )
-    nmf_model = NMF(nmf_config).fit(X_train)
+    nmf_model = NMF(**cfg.model.parameters).fit(X_train)
     nmf_eval_results = nmf_model.evaluate(X_val)
 
     # Save outputs
