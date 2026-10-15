@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from gut_former.nmf.nmf_core import run_nmf_loop
+from gut_former.nmf.nmf_core import NMF, NMFConfig
 from gut_former.utils.data_prep import collapse_to_genus, filter_samples, train_val_split
 from gut_former.utils.log_config import setup_logging
 
@@ -52,9 +52,12 @@ def run_nmf_task(cfg: DictConfig, **_):
     log.info("Train: %s | Val: %s", X_train.shape, X_val.shape)
 
     # Run NMF
-    best, history = run_nmf_loop(
-        X_train, X_val, cfg.model.parameters.n_components, cfg.model.parameters.n_runs
+    nmf_config = NMFConfig(
+        n_components=cfg.model.parameters.n_components,
+        n_runs=cfg.model.parameters.n_runs,
     )
+    nmf_model = NMF(nmf_config).fit(X_train)
+    nmf_eval_results = nmf_model.evaluate(X_val)
 
     # Save outputs
     output_path = Path(HydraConfig.get().runtime.output_dir)
@@ -63,10 +66,18 @@ def run_nmf_task(cfg: DictConfig, **_):
     n = cfg.model.parameters.n_components
     ds = cfg.dataset.name
     tag = f"{cfg.dataset.kind}_{cfg.dataset.subset}"
-    pd.DataFrame(best["H"], columns=X_train.columns).to_csv(output_path / f"H_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(best["W"], index=X_train.index).to_csv(output_path / f"W_train_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(best["W_val"], index=X_val.index).to_csv(output_path / f"W_val_{n}_{ds}_{tag}.csv")
-    pd.DataFrame(history).to_csv(output_path / f"nmf_stats_{n}_{ds}_{tag}.csv", index=False)
+    pd.DataFrame(nmf_model.H_, columns=X_train.columns).to_csv(
+        output_path / f"H_{n}_{ds}_{tag}.csv"
+    )
+    pd.DataFrame(nmf_model.W_train_, index=X_train.index).to_csv(
+        output_path / f"W_train_{n}_{ds}_{tag}.csv"
+    )
+    pd.DataFrame(nmf_eval_results["W_val"], index=X_val.index).to_csv(
+        output_path / f"W_val_{n}_{ds}_{tag}.csv"
+    )
+    pd.DataFrame(nmf_model.history_).to_csv(
+        output_path / f"nmf_stats_{n}_{ds}_{tag}.csv", index=False
+    )
 
     log.info(
         "Done. Saved to %s:\n"

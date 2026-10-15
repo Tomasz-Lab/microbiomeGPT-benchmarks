@@ -1,7 +1,11 @@
 import logging
+from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import non_negative_factorization
 
 from gut_former.utils.metrics import cos_sim, exp_var
@@ -9,81 +13,149 @@ from gut_former.utils.metrics import cos_sim, exp_var
 log = logging.getLogger(__name__)
 
 
-def nmf(X, n_components, init="nndsvdar", update_H=True, H=None, random_state=None):
-    """Wrapper around non_negative_factorization with fixed settings.
-
-    Returns (W, H, n_iter). Fixed params: solver=mu, beta_loss=kullback-leibler, max_iter=2000.
-    """
-    W, H, n_iter = non_negative_factorization(
-        X,
-        n_components=n_components,
-        init=init,
-        solver="mu",
-        beta_loss="kullback-leibler",
-        max_iter=2000,
-        update_H=update_H,
-        H=H,
-        random_state=random_state,
-    )
-    return W, H, n_iter
+@dataclass(frozen=True)
+class NMFConfig:
+    n_components: int
+    init: str = "nndsvdar"
+    solver: str = "mu"
+    beta_loss: str = "kullback-leibler"
+    max_iter: int = 2000
+    n_runs: int = 100
+    n_jobs: int = -2
+    selection_metric: Literal["exp_var", "cos_sim", "composite"] = "exp_var"
 
 
-def run_nmf_loop(X_train: pd.DataFrame, X_val: pd.DataFrame, n_signatures: int, n_runs: int):
-    """Train NMF with multiple random seeds, return best model and per-run history.
+@dataclass(frozen=True)
+class NMFFitResult:
+    seed: int
+    exp_var: float
+    cos_sim: float
+    W: np.ndarray
+    H: np.ndarray
 
-    NMF is non-convex and can get stuck in local minima — multiple random
-    initializations are used to find the best solution. Best is selected by
-    validation explained variance and cosine similarity.
 
-    Returns:
-        best    — dict with keys: exp_var, cos_sim, model, H, W
-        history — list of per-run dicts with train/val metrics
-    """
-    best = {
-        "exp_var": -np.inf,
-        "cos_sim": -np.inf,
-        "H": None,
-        "W": None,
-        "W_val": None,
-    }
+class NMF(BaseEstimator, TransformerMixin):
+    def __init__(self, config: NMFConfig):
+        if not isinstance(config, NMFConfig):
+            raise TypeError(f"Expected NMFConfig, received: {type(config).__name__}")
 
-    history = []
+        self.config = config
 
-    for seed in range(1, n_runs + 1):
-        W_train, H, _ = nmf(X_train, n_signatures, random_state=seed)
-        W_val, _, _ = nmf(X_val, n_signatures, init="custom", update_H=False, H=H)
+        self.n_components = config.n_components
+        self.init = config.init
+        self.solver = config.solver
+        self.beta_loss = config.beta_loss
+        self.max_iter = config.max_iter
+        self.n_runs = config.n_runs
+        self.n_jobs = config.n_jobs
+        self.selection_metric = config.selection_metric
 
-        ev_train = exp_var(X_train, W_train @ H)
-        cs_train = cos_sim(X_train, W_train @ H)
-        ev_val = exp_var(X_val, W_val @ H)
-        cs_val = cos_sim(X_val, W_val @ H)
+        self.H_: np.ndarray | None = None
+        self.W_train_: np.ndarray | None = None
+        self.best_seed_: int | None = None
+        self.history_: list[dict[str, float]] = []
 
-        history.append(
-            {
-                "seed": seed,
-                "exp_var_train": ev_train,
-                "cos_sim_train": cs_train,
-                "exp_var_val": ev_val,
-                "cos_sim_val": cs_val,
-            }
+    def _single_fit_run(self, X: np.ndarray, seed: int) -> NMFFitResult:
+        W, H, _ = non_negative_factorization(
+            X,
+            n_components=self.n_components,
+            init=self.init,
+            solver=self.solver,
+            beta_loss=self.beta_loss,
+            max_iter=self.max_iter,
+            random_state=seed,
         )
+
+        if np.isnan(W).any() or np.isnan(H).any():
+            log.warning("NMF run (seed %d) returned NaN values.", seed)
+            return NMFFitResult(
+                seed=seed,
+                exp_var=np.nan,
+                cos_sim=np.nan,
+                W=W,
+                H=H,
+            )
+
+        pred = W @ H
+
+        return NMFFitResult(
+            seed=seed,
+            exp_var=exp_var(X, pred),
+            cos_sim=cos_sim(X, pred),
+            W=W,
+            H=H,
+        )
+
+    def _get_metric(self, run: NMFFitResult) -> float:
+        if self.selection_metric == "exp_var":
+            return run.exp_var
+        elif self.selection_metric == "cos_sim":
+            return run.cos_sim
+        elif self.selection_metric == "composite":
+            return run.exp_var + run.cos_sim
+        raise ValueError(f"Unknown selection metric: {self.selection_metric}")
+
+    def fit(self, X: pd.DataFrame | np.ndarray, y=None):
+        X_arr = X.values if isinstance(X, pd.DataFrame) else X
+
+        results: list[NMFFitResult] = Parallel(n_jobs=self.n_jobs)(
+            delayed(self._single_fit_run)(X_arr, seed) for seed in range(1, self.n_runs + 1)
+        )
+
+        valid_results = [r for r in results if np.isfinite(self._get_metric(r))]
+
+        if not valid_results:
+            raise RuntimeError("All NMF runs returned invalid values (NaN/Inf).")
+
+        best_run = max(valid_results, key=self._get_metric)
+
+        self.H_ = best_run.H
+        self.W_train_ = best_run.W
+        self.best_seed_ = best_run.seed
+
+        self.history_ = [
+            {
+                "seed": r.seed,
+                "exp_var_train": r.exp_var,
+                "cos_sim_train": r.cos_sim,
+            }
+            for r in results
+        ]
 
         log.info(
-            "Seed %d/%d | train: exp_var=%.4f cos_sim=%.4f | val: exp_var=%.4f cos_sim=%.4f",
-            seed,
-            n_runs,
-            ev_train,
-            cs_train,
-            ev_val,
-            cs_val,
+            "Best run (seed %d) | exp_var_train: %.4f | cos_sim_train: %.4f",
+            best_run.seed,
+            best_run.exp_var,
+            best_run.cos_sim,
         )
+        return self
 
-        if ev_val > best["exp_var"] and cs_val > best["cos_sim"]:
-            best["exp_var"] = ev_val
-            best["cos_sim"] = cs_val
-            best["H"] = H
-            best["W"] = W_train
-            best["W_val"] = W_val
+    def transform(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+        if self.H_ is None:
+            raise RuntimeError("Model is not yet fitted. Call .fit() first.")
 
-    log.info("Best run | exp_var_val: %.4f | cos_sim_val: %.4f", best["exp_var"], best["cos_sim"])
-    return best, history
+        X_arr = X.values if isinstance(X, pd.DataFrame) else X
+
+        W, _, _ = non_negative_factorization(
+            X_arr,
+            n_components=self.n_components,
+            init="custom",
+            solver=self.solver,
+            beta_loss=self.beta_loss,
+            max_iter=self.max_iter,
+            update_H=False,
+            H=self.H_,
+        )
+        return W
+
+    def evaluate(self, X_val: pd.DataFrame | np.ndarray) -> dict[str, float]:
+        W_val = self.transform(X_val)
+        X_arr = X_val.values if isinstance(X_val, pd.DataFrame) else X_val
+
+        reconstruction = W_val @ self.H_
+
+        return {
+            "W_val": W_val,
+            "exp_var_val": exp_var(X_arr, reconstruction),
+            "cos_sim_val": cos_sim(X_arr, reconstruction),
+        }
