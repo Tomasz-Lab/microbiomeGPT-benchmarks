@@ -25,14 +25,39 @@ def main():
     config = TrainingConfig()
     p = argparse.ArgumentParser()
 
-    p.add_argument("--dataset", type=str, default=config.data.dataset, help="Name of the dataset to use.")
-    p.add_argument("--embedding_dim", type=int, default=config.model.embedding_dim, help="Dimensionality of the input embeddings.")
-    p.add_argument("--latent_dim", type=int, default=config.model.latent_dim, help="Dimensionality of the model's latent representation.")
-    p.add_argument("--batch_size", type=int, default=config.batch_size, help="Number of samples processed per batch")
-    p.add_argument("--learning_rate", type=float, default=config.learning_rate, help="Learning rate used for training.")
+    p.add_argument(
+        "--dataset", type=str, default=config.data.dataset, help="Name of the dataset to use."
+    )
+    p.add_argument(
+        "--embedding_dim",
+        type=int,
+        default=config.model.embedding_dim,
+        help="Dimensionality of the input embeddings.",
+    )
+    p.add_argument(
+        "--latent_dim",
+        type=int,
+        default=config.model.latent_dim,
+        help="Dimensionality of the model's latent representation.",
+    )
+    p.add_argument(
+        "--batch_size",
+        type=int,
+        default=config.batch_size,
+        help="Number of samples processed per batch",
+    )
+    p.add_argument(
+        "--learning_rate",
+        type=float,
+        default=config.learning_rate,
+        help="Learning rate used for training.",
+    )
     p.add_argument("--epochs", type=int, default=config.epochs, help="Number of training epochs.")
     p.add_argument(
-        "--verbose", action=argparse.BooleanOptionalAction, default=config.verbose, help="Enable or disable verbose logging."
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=config.verbose,
+        help="Enable or disable verbose logging.",
     )
 
     p.add_argument(

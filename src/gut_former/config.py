@@ -9,6 +9,7 @@ class DataConfig:
 @dataclass(frozen=True)
 class ModelConfig:
     """Configuration for model architecture."""
+
     model_version: str = "v1-0-0"
     embedding_dim: int = 128
     latent_dim: int = 64
@@ -17,6 +18,7 @@ class ModelConfig:
 @dataclass(frozen=True)
 class TrainingConfig:
     """Configuration for model training."""
+
     data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     batch_size: int = 16
@@ -29,6 +31,7 @@ class TrainingConfig:
 @dataclass(frozen=True)
 class InferenceConfig:
     """Configuration for running inference with a trained model."""
+
     data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     checkpoint: str | None = None

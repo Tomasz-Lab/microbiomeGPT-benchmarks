@@ -2,7 +2,7 @@ import numpy as np
 
 
 def cos_sim(X, X_pred):
-    X_flat      = np.concatenate(np.array(X))
+    X_flat = np.concatenate(np.array(X))
     X_pred_flat = np.concatenate(np.array(X_pred))
     return X_pred_flat.dot(X_flat) / np.sqrt(X_pred_flat.dot(X_pred_flat) * X_flat.dot(X_flat))
 

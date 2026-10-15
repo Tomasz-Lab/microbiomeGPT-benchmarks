@@ -1,0 +1,30 @@
+name: Lint
+
+on:
+  push:
+
+  pull_request:
+    branches:
+      - develop
+      - 'release/**'
+
+permissions:
+  contents: read
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Ruff linting
+        uses: astral-sh/ruff-action@v4.1.0
+        with:
+          version-file: uv.lock
+          args: 'check --output-format=github .'
+
+      - name: Check Ruff formatting
+        run: ruff format --check --diff .
