@@ -1,61 +1,61 @@
-.PHONY: help install clean check fix typecheck kernel jupyter
+.PHONY: help install setup hooks clean check fix lint format-check typecheck kernel jupyter
 
 help:
 	@echo "Available commands:"
 	@echo ""
 	@echo "Setup"
-	@echo "  make install   - Install dependencies"
-	@echo "  make clean     - Remove virtual environment"
+	@echo "  make install       - Install dependencies"
+	@echo "  make setup         - Install dependencies and Git hooks"
+	@echo "  make hooks         - Install pre-commit Git hooks"
 	@echo ""
 	@echo "Quality"
-
-	@echo "  make check     - Run all (fix + typecheck)"
-
-	@echo "  make fix       - Auto-fix and format code"
-
-	@echo "  make typecheck - Run type checking (mypy)"
-
+	@echo "  make check         - Run lint, format check and typecheck"
+	@echo "  make fix           - Auto-fix and format code"
+	@echo "  make lint          - Run Ruff linting"
+	@echo "  make format-check  - Check Ruff formatting"
+	@echo "  make typecheck     - Run mypy"
 	@echo ""
 	@echo "Jupyter"
-	@echo "  make kernel    - Register Jupyter kernel"
-	@echo "  make jupyter   - Launch Jupyter Notebook"
-
+	@echo "  make kernel        - Register Jupyter kernel"
+	@echo "  make jupyter       - Launch Jupyter Notebook"
 
 # -----------------------------------------
 # Setup
 # -----------------------------------------
 
 install:
-	poetry install
+	uv sync
 
-clean:
-	poetry env remove python || true
+setup: install hooks
+
+hooks:
+	uvx pre-commit install
 
 # -----------------------------------------
 # Quality
 # -----------------------------------------
 
+check: lint format-check typecheck
 
-check: fix typecheck
+lint:
+	uv run ruff check .
 
+format-check:
+	uv run ruff format --check .
 
 typecheck:
-	poetry run mypy .
+	uv run mypy .
 
 fix:
-	poetry run ruff check . --fix
-	poetry run ruff format .
-
-
-
+	uv run ruff check --fix .
+	uv run ruff format .
 
 # -----------------------------------------
 # Jupyter
 # -----------------------------------------
 
 kernel:
-	poetry run python -m ipykernel install --user --name=microbiome-gpt --display-name "Python (microbiome-gpt)"
+	uv run python -m ipykernel install --user --name=microbiome-gpt --display-name "Python (microbiome-gpt)"
 
 jupyter:
-	poetry run jupyter notebook
-
+	uv run jupyter notebook

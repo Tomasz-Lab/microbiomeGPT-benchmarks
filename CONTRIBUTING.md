@@ -2,8 +2,15 @@
 
 ## 🛠️ Development
 
-Before committing your changes:
+After cloning the repository:
 
+```bash
+make setup
+```
+
+If any files are modified by the hooks, review the changes, stage them again, and retry the commit.
+
+To run checks manually:
 ```bash
 make check    # Run all: fix + typecheck
 ```

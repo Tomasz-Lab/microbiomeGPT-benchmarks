@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.functional import mse_loss
 
+
 class CompositeLoss(nn.Module):
     def __init__(self, distance_weight: float = 0.1, variance_weight: float = 0.1):
         super().__init__()
@@ -18,7 +19,7 @@ class CompositeLoss(nn.Module):
 
         t_loss = mse_loss(dist_mtx(xt_pred), dist_mtx(xt))
         p_loss = mse_loss(dist_mtx(xp_pred), dist_mtx(xp))
-        dist =  t_loss + p_loss
+        dist = t_loss + p_loss
 
         # Variance Loss
         t_var = torch.abs(xt.var() - xt_pred.var())

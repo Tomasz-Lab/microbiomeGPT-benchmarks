@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 def find_project_root(start_path: str = __file__, marker: str = ".git") -> Path:
     """
     Find the project root by searching upward for a specified file or folder.
@@ -16,13 +17,16 @@ def find_project_root(start_path: str = __file__, marker: str = ".git") -> Path:
         project_root = project_root.parent
     return project_root
 
+
 def find_data_path(*parts: str) -> Path:
     """Path to the project's data directory (optionally joined with subpaths)."""
     return find_project_root() / "data" / Path(*parts)
 
+
 def find_output_path(*parts: str) -> Path:
     """Path to the project's output directory (optionally joined with subpaths)."""
     return find_project_root() / "output" / Path(*parts)
+
 
 def find_figures_path(*parts: str) -> Path:
     """Path to the project's figures directory (optionally joined with subpaths)."""

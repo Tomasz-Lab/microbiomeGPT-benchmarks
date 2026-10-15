@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+
 class BacteriaModel(nn.Module):
     def __init__(self, num_pathways, num_bacteria, embedding_dim, latent_size):
-        super(BacteriaModel, self).__init__()
+        super().__init__()
 
         self.embedding_dim = embedding_dim
         self.latent_size = latent_size
@@ -16,12 +17,17 @@ class BacteriaModel(nn.Module):
         self.linear_layer = nn.Linear(1, embedding_dim)
 
         # Transformer encoder
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=embedding_dim, nhead=2, batch_first=True, dropout=0.05)
+        self.encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim, nhead=2, batch_first=True, dropout=0.05
+        )
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=1)  # 1
 
-        self.final_encoder_layer = nn.TransformerEncoderLayer(d_model=embedding_dim, nhead=embedding_dim,
-                                                              batch_first=True)
-        self.final_transformer_encoder = nn.TransformerEncoder(self.final_encoder_layer, num_layers=1)
+        self.final_encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim, nhead=embedding_dim, batch_first=True
+        )
+        self.final_transformer_encoder = nn.TransformerEncoder(
+            self.final_encoder_layer, num_layers=1
+        )
 
         # Mean and Logvar layers
         self.latent_layer = nn.Linear(embedding_dim, latent_size)
@@ -30,14 +36,15 @@ class BacteriaModel(nn.Module):
         self.linear_transform = nn.Linear(latent_size, embedding_dim)
 
         # Transformer decoder
-        self.decoder_layer = nn.TransformerEncoderLayer(d_model=embedding_dim, nhead=2, batch_first=True)
+        self.decoder_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim, nhead=2, batch_first=True
+        )
         self.transformer_decoder = nn.TransformerEncoder(self.decoder_layer, num_layers=1)
 
         # Final linear layer to transform (B, #Bac, D) to (B, #Bac, 1)
         self.latent_norm = nn.LayerNorm(latent_size)
 
-        self.output_transform = nn.Sequential(
-            nn.Linear(embedding_dim, 1))
+        self.output_transform = nn.Sequential(nn.Linear(embedding_dim, 1))
 
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -46,7 +53,6 @@ class BacteriaModel(nn.Module):
                     nn.init.zeros_(m.bias)
 
     def forward(self, pathways_tensor, bacteria_tensor):
-
         batch_size = pathways_tensor.size(0)
         num_pathways = pathways_tensor.size(1)
         num_bacteria = bacteria_tensor.size(1)
@@ -90,8 +96,12 @@ class BacteriaModel(nn.Module):
         bacteria_result_with_encoding = D_vector_expanded_taxonomy + bacteria_encoded_expanded
 
         # Step 9: Pass through Transformer decoder
-        pathways_output = self.transformer_decoder(pathways_result_with_encoding)  # zamienic na encoder i usunąć
-        bacteria_output = self.transformer_decoder(bacteria_result_with_encoding)  # zamienic na encoder i usunąć
+        pathways_output = self.transformer_decoder(
+            pathways_result_with_encoding
+        )  # zamienic na encoder i usunąć
+        bacteria_output = self.transformer_decoder(
+            bacteria_result_with_encoding
+        )  # zamienic na encoder i usunąć
 
         # Step 10: Transform output to (B, #Bac, 1)
         pathways_output_transformed = self.output_transform(pathways_output)

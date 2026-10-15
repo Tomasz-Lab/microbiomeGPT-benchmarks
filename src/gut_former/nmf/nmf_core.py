@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -37,9 +37,7 @@ class NMFFitResult:
 class NMF(BaseEstimator, TransformerMixin):
     def __init__(self, config: NMFConfig):
         if not isinstance(config, NMFConfig):
-            raise TypeError(
-                f"Expected NMFConfig, received: {type(config).__name__}"
-            )
+            raise TypeError(f"Expected NMFConfig, received: {type(config).__name__}")
 
         self.config = config
 
@@ -52,10 +50,10 @@ class NMF(BaseEstimator, TransformerMixin):
         self.n_jobs = config.n_jobs
         self.selection_metric = config.selection_metric
 
-        self.H_: Optional[np.ndarray] = None
-        self.W_train_: Optional[np.ndarray] = None
-        self.best_seed_: Optional[int] = None
-        self.history_: List[Dict[str, float]] = []
+        self.H_: np.ndarray | None = None
+        self.W_train_: np.ndarray | None = None
+        self.best_seed_: int | None = None
+        self.history_: list[dict[str, float]] = []
 
     def _single_fit_run(self, X: np.ndarray, seed: int) -> NMFFitResult:
         W, H, _ = non_negative_factorization(
@@ -100,17 +98,14 @@ class NMF(BaseEstimator, TransformerMixin):
     def fit(self, X: pd.DataFrame | np.ndarray, y=None):
         X_arr = X.values if isinstance(X, pd.DataFrame) else X
 
-        results: List[NMFFitResult] = Parallel(n_jobs=self.n_jobs)(
-            delayed(self._single_fit_run)(X_arr, seed)
-            for seed in range(1, self.n_runs + 1)
+        results: list[NMFFitResult] = Parallel(n_jobs=self.n_jobs)(
+            delayed(self._single_fit_run)(X_arr, seed) for seed in range(1, self.n_runs + 1)
         )
 
         valid_results = [r for r in results if np.isfinite(self._get_metric(r))]
 
         if not valid_results:
-            raise RuntimeError(
-                "All NMF runs returned invalid values (NaN/Inf)."
-            )
+            raise RuntimeError("All NMF runs returned invalid values (NaN/Inf).")
 
         best_run = max(valid_results, key=self._get_metric)
 
@@ -137,9 +132,7 @@ class NMF(BaseEstimator, TransformerMixin):
 
     def transform(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         if self.H_ is None:
-            raise RuntimeError(
-                "Model is not yet fitted. Call .fit() first."
-            )
+            raise RuntimeError("Model is not yet fitted. Call .fit() first.")
 
         X_arr = X.values if isinstance(X, pd.DataFrame) else X
 
@@ -155,14 +148,14 @@ class NMF(BaseEstimator, TransformerMixin):
         )
         return W
 
-    def evaluate(self, X_val: pd.DataFrame | np.ndarray) -> Dict[str, float]:
+    def evaluate(self, X_val: pd.DataFrame | np.ndarray) -> dict[str, float]:
         W_val = self.transform(X_val)
         X_arr = X_val.values if isinstance(X_val, pd.DataFrame) else X_val
-        
+
         reconstruction = W_val @ self.H_
-        
+
         return {
             "W_val": W_val,
             "exp_var_val": exp_var(X_arr, reconstruction),
-            "cos_sim_val": cos_sim(X_arr, reconstruction)
+            "cos_sim_val": cos_sim(X_arr, reconstruction),
         }

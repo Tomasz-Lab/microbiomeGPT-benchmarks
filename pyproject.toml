@@ -1,29 +1,42 @@
-[tool.poetry]
+[project]
 name = "gut-former"
 version = "0.1.0"
 description = "GUT-FORMer by TomaszLab"
-authors = ["Zuzanna Karwowska, Tomasz Kościółek, Wojciech Nowak"]
-packages = [{include = "gut_former", from = "src"}]
+authors = [{ name = "Zuzanna Karwowska, Tomasz Kościółek, Wojciech Nowak" }]
+requires-python = ">=3.12,<3.14"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "torch>=2.10.0,<3",
+    "numpy>=2.4.1,<3",
+    "pandas>=3.0.0,<4",
+    "scikit-learn>=1.8.0,<2",
+    "matplotlib>=3.10.8,<4",
+    "seaborn>=0.13.2,<0.14",
+    "torchmetrics>=1.8.2,<2",
+    "scikit-bio>=0.7.2,<0.8",
+    "optuna>=4.7.0,<5",
+    "sweetviz>=2.3.3,<3",
+]
 
-[tool.poetry.scripts]
-gut-former = "gut-former.main:main"
+[project.scripts]
+gut-former = "gut_former.main:main"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.15"
-torch = "^2.10.0"
-numpy = "^2.4.1"
-pandas = "^3.0.0"
-scikit-learn = "^1.8.0"
-matplotlib = "^3.10.8"
-seaborn = "^0.13.2"
-torchmetrics = "^1.8.2"
-scikit-bio = "^0.7.2"
-optuna = "^4.7.0"
-joblib = "^1.6.0"
+[tool.hatch.build.targets.sdist]
+include = ["src/gut_former"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/gut_former"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/gut_former" = "gut_former"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
@@ -31,6 +44,7 @@ dev = [
     "mypy (>=1.19.0,<2.0.0)",
     "jupyter (>=1.1.0,<2.0.0)",
     "ipykernel (>=7.1.0,<8.0.0)"
+,
 ]
 
 [tool.ruff]
@@ -46,6 +60,7 @@ select = [
     "UP",   # pyupgrade (modern Python syntax)
 ]
 ignore = ["E501"]  # Let formatter handle line length
+exclude = ["*.ipynb"] #TODO: Remove when notebook are removed from repo
 
 [tool.ruff.format]
 quote-style = "double"
