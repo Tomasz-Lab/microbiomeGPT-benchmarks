@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - /task: run_gut_former_inference
+  - /model: gut_former
+  - /dataset: csv
+  - _self_
+
+experiment:
+  name: gut_former_inference

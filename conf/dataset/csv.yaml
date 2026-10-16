@@ -1,0 +1,10 @@
+# @package dataset
+_target_: gut_former.nmf.run_nmf.load_data_nmf_csv
+
+dir: ${oc.env:PROJECT_ROOT,.}/data
+kind: pathways
+name: sample
+subset: all
+
+data_path: ${dataset.dir}/${dataset.kind}_${dataset.name}.csv
+metadata_path: ${dataset.dir}/metadata_${dataset.name}.csv
