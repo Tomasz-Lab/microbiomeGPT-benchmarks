@@ -14,6 +14,8 @@ or just add related issue by referencing via #123.
 TODO: Closing keywords handled automatically
 -->
 
+Closes 
+
 
 ## Testing
 
