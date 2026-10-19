@@ -1,0 +1,53 @@
+name: "Bug Report"
+description: "Report incorrect results, failures, or unexpected behavior."
+type: "Bug"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description"
+      description: "What is wrong? Describe the observed behavior."
+      placeholder: "Describe the problem and its impact."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Provide commands, inputs, or steps that reproduce the problem."
+      placeholder: |
+        1. Configure ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior"
+      description: "What should have happened instead?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "Relevant OS, Python version, dependency versions, dataset, or configuration."
+      placeholder: |
+        - OS:
+        - Python version:
+        - Dataset/configuration:
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Logs / Additional Context"
+      description: "Include error messages, logs, screenshots, or links when relevant. Avoid sharing sensitive data."
+    validations:
+      required: false
