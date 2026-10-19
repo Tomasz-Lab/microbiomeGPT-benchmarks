@@ -23,8 +23,11 @@ TODO: Closing keywords handled automatically
 
 ## Checklist
 
+- [ ] PR labels and metadata are correctly assigned
 - [ ] Relevant tests have been added and performed (if applicable)
 - [ ] Documentation updated (if applicable)
+- [ ] Deployment requirements have been documented (if applicable)
+- [ ] Version bump or release tagging requirements have been revealed (if applicable)
 
 ## Additional Notes
 
