@@ -31,6 +31,15 @@ Closes
 - [ ] Deployment requirements have been documented (if applicable)
 - [ ] Version bump or release tagging requirements have been revealed (if applicable)
 
+## Artifacts
+
+<!--
+List any additional artifacts created or updated as part of this work,
+especially those stored outside the repository (provide links and short description).
+-->
+
+- 
+
 ## Additional Notes
 
 <!-- Optional: screenshots, notes etc. -->
