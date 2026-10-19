@@ -1,0 +1,38 @@
+name: "Technical Task"
+description: "Plan maintenance, CI/CD, refactoring, tests, research, or configuration work."
+type: "Task"
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description / Motivation"
+      description: "Explain what needs to be done and why."
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: "Scope / Implementation Tasks"
+      description: "Break down the work into actionable steps."
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Specify how to determine that this task is complete."
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context / Dependencies"
+      description: "Related issues, dependencies, references, or implementation notes."
+    validations:
+      required: false
