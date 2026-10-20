@@ -39,13 +39,13 @@ def run_training(cfg: DictConfig, **_):
         pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.pathways_multiplier
     )
     Xp_df = (
         pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.pathways_multiplier
     )
 
     Xt_train, Xt_test = train_val_split(Xt_df)
