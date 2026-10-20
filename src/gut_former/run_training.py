@@ -39,7 +39,7 @@ def run_training(cfg: DictConfig, **_):
         pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * cfg.dataset.pathways_multiplier
+        * cfg.dataset.taxa_multiplier
     )
     Xp_df = (
         pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)

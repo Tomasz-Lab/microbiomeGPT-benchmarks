@@ -6,6 +6,8 @@ kind: pathways
 name: sample
 subset: all
 pathways_multiplier: 100
+taxa_multiplier: 100
+
 
 data_path: ${dataset.dir}/${dataset.kind}_${dataset.name}.csv
 metadata_path: ${dataset.dir}/metadata_${dataset.name}.csv
