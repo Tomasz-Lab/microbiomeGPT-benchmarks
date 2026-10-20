@@ -28,13 +28,13 @@ def run_inference(cfg: DictConfig, **_):
         pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.pathways_multiplier
     )
     p_df = (
         pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.pathways_multiplier
     )
 
     t_tensor = torch.tensor(t_df.values, dtype=torch.float32).unsqueeze(-1)
