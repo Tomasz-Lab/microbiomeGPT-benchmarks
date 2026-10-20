@@ -4,7 +4,7 @@ _partial_: true
 name: gut_former_training
 
 batch_size: 16
-epochs: 1
+epochs: 55
 checkpoint_path: null
 verbose: true
 
