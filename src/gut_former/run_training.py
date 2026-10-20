@@ -28,7 +28,8 @@ def run_training(cfg: DictConfig, **_):
     output_path = Path(HydraConfig.get().runtime.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    stats_path = f"{output_path}/{today_str}_{cfg.dataset.name}_training_stats.csv"
+    stats_path = output_path / f"{today_str}_{cfg.dataset.name}_training_stats.csv"
+    checkpoint_output_path = output_path / f"{today_str}_{cfg.dataset.name}_checkpoint.pt"
 
     # Loading & Preparing Data
     # To do: refactor later when we will be dealing with task for dataload refacotr
@@ -71,9 +72,11 @@ def run_training(cfg: DictConfig, **_):
 
     loss_func = hydra.utils.instantiate(cfg.task.loss)
 
-    if cfg.task.checkpoint_path != "none":
+    if cfg.task.checkpoint_path is not None:
         model.load_state_dict(torch.load(cfg.task.checkpoint_path, map_location=DEVICE))
         log.info("Resumed from checkpoint: %s", cfg.task.checkpoint_path)
+    else:
+        log.info("No checkpoint configured; starting training from scratch.")
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -146,7 +149,7 @@ def run_training(cfg: DictConfig, **_):
 
         if epoch % 10 == 1:
             log.info(f"Epoch: {epoch} -> Test Loss: {test_loss:.3f}")
-            torch.save(model.state_dict(), cfg.task.checkpoint_path)
+            torch.save(model.state_dict(), checkpoint_output_path)
 
     stats_cols = [
         "epoch",
@@ -161,9 +164,9 @@ def run_training(cfg: DictConfig, **_):
     stats_df = pd.DataFrame(history, columns=stats_cols)
     stats_df.to_csv(stats_path, index=False)
 
-    torch.save(model.state_dict(), cfg.task.checkpoint_path)
+    torch.save(model.state_dict(), checkpoint_output_path)
     log.info(
         "\nTraining completed.\nSaved outputs:\n  - Training stats: %s\n  - Model checkpoint: %s\n",
         stats_path,
-        cfg.task.checkpoint_path,
+        checkpoint_output_path,
     )

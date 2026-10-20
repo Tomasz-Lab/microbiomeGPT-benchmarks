@@ -8,6 +8,3 @@ defaults:
 
 experiment:
   name: gut_former_training
-
-task:
-  checkpoint_path: none

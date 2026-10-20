@@ -19,6 +19,9 @@ def run_inference(cfg: DictConfig, **_):
 
     log.info("Starting inference script..\n ")
 
+    if cfg.task.checkpoint_path is None:
+        raise ValueError("Inference requires a trained model checkpoint; set task.checkpoint_path.")
+
     output_path = Path(HydraConfig.get().runtime.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -54,7 +57,7 @@ def run_inference(cfg: DictConfig, **_):
 
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
     checkpoint_dict = torch.load(cfg.task.checkpoint_path, weights_only=True, map_location=DEVICE)
-    model.load_state_dict(checkpoint_dict, strict=False)
+    model.load_state_dict(checkpoint_dict)
     model.eval()
     model.cpu()
 

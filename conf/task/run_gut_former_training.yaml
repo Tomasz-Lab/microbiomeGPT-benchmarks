@@ -5,7 +5,7 @@ name: gut_former_training
 
 batch_size: 16
 epochs: 1
-checkpoint_path: none
+checkpoint_path: null
 verbose: true
 
 optimizer:

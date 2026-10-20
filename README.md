@@ -101,8 +101,7 @@ configuration/log files under
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
   dataset.name=sample \
-  task.epochs=55 \
-  task.checkpoint_path=output/sample_checkpoint.pt
+  task.epochs=55
 ```
 
 Training settings are supplied as Hydra overrides:
@@ -113,30 +112,32 @@ Training settings are supplied as Hydra overrides:
 | `task.epochs` | `1` | Number of training epochs |
 | `task.batch_size` | `16` | Batch size |
 | `task.learning_rate` | `1.893292917167e-4` | Learning rate |
-| `task.checkpoint_path` | `none` | Checkpoint destination; set this to a file path to save model weights |
+| `task.checkpoint_path` | `null` | Optional checkpoint to load before training |
 | `model.embedding_dim` | `128` | Embedding dimension |
 | `model.latent_size` | `64` | Latent space dimension |
 
-Training statistics are saved in the Hydra run directory. The checkpoint is saved to
-`task.checkpoint_path`, which is a path relative to the repository working directory unless
-you provide an absolute path. Set it explicitly; the default `none` is not a usable checkpoint
-destination.
+Training statistics and the trained checkpoint are saved in the Hydra run directory. The
+checkpoint is named `{date}_{dataset}_checkpoint.pt`; `task.checkpoint_path` only specifies an
+optional checkpoint to load and is not overwritten.
 
 ### Fine-tuning
 
-Continue training by setting `task.checkpoint_path` to the checkpoint to load. Training writes
-the updated weights back to that same path, so use a different destination if you want to
-preserve the original:
+Continue training by setting `task.checkpoint_path` to the checkpoint to load. The new model
+checkpoint is saved separately in the current Hydra run directory, leaving the source checkpoint
+unchanged:
 
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
   dataset.name=my_dataset \
   task.epochs=1000 \
-  task.checkpoint_path=output/my_dataset_checkpoint.pt
+  task.checkpoint_path=/path/to/checkpoint.pt
 ```
 
 ### Inference
+
+Inference requires a trained checkpoint; unlike training from scratch, it cannot run without
+`task.checkpoint_path`.
 
 ```bash
 uv run python src/gut_former/main.py \
