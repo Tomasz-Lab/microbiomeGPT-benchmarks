@@ -4,7 +4,12 @@ _partial_: true
 name: gut_former_training
 
 batch_size: 16
-learning_rate: 1.893292917167e-4
 epochs: 1
 checkpoint_path: none
 verbose: true
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1.893292917167e-4
+  weight_decay: 0.001

@@ -8,7 +8,6 @@ import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch.nn.functional import mse_loss
-from torch.optim import Adam
 from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
@@ -68,7 +67,9 @@ def run_training(cfg: DictConfig, **_):
         num_bacteria=Xt_df.shape[1],
     ).to(DEVICE)
 
-    optimizer = Adam(model.parameters(), lr=cfg.task.learning_rate, weight_decay=0.001)
+    optimizer_fn = hydra.utils.instantiate(cfg.task.optimizer)
+    optimizer = optimizer_fn(model.parameters())
+
     composite_loss = CompositeLoss()
 
     if cfg.task.checkpoint_path != "none":
