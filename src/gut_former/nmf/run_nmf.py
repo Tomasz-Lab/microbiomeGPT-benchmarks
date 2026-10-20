@@ -17,14 +17,14 @@ log = logging.getLogger(__name__)
 
 
 def load_data_nmf_csv(
-    data_path: str, metadata_path: str, kind: str, subset: str, **_
+    data_path: str, metadata_path: str, kind: str, subset: str, pathways_multiplier: int, **_
 ) -> pd.DataFrame:
     """Load and preprocess input data based on data type."""
     df = pd.read_csv(data_path, index_col=0, low_memory=False).fillna(0).sort_index()
     metadata = pd.read_csv(metadata_path, index_col=0, low_memory=False).sort_index()
 
     if kind == "pathways":
-        df = df * 100
+        df = df * pathways_multiplier
 
     df = filter_samples(df, metadata, subset)
 
