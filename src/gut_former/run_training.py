@@ -11,7 +11,6 @@ from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
-from gut_former.loss import CompositeLoss
 from gut_former.utils.data_prep import train_val_split
 from gut_former.utils.log_config import setup_logging
 from gut_former.utils.project_paths import find_data_path
@@ -70,7 +69,7 @@ def run_training(cfg: DictConfig, **_):
     optimizer_fn = hydra.utils.instantiate(cfg.task.optimizer)
     optimizer = optimizer_fn(model.parameters())
 
-    composite_loss = CompositeLoss()
+    loss_func = hydra.utils.instantiate(cfg.task.loss)
 
     if cfg.task.checkpoint_path != "none":
         model.load_state_dict(torch.load(cfg.task.checkpoint_path, map_location=DEVICE))
@@ -105,7 +104,7 @@ def run_training(cfg: DictConfig, **_):
 
             Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
 
-            loss = composite_loss(Xt_b, Xt_pred, Xp_b, Xp_pred)
+            loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
             loss.backward()
             optimizer.step()
 
@@ -128,7 +127,7 @@ def run_training(cfg: DictConfig, **_):
                 Xp_b = Xp_b.to(DEVICE)
 
                 Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
-                loss = composite_loss(Xt_b, Xt_pred, Xp_b, Xp_pred)
+                loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
 
                 test_loss += loss.item() * batch_size
                 test_t_mse += mse_loss(Xt_pred, Xt_b).item() * batch_size
