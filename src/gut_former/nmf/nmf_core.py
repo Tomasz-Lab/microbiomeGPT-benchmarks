@@ -122,12 +122,12 @@ class NMF(BaseEstimator, TransformerMixin):
         )
         return self
 
-    def transform(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
-        if self.H_ is None:
+    def transform(self, X, H: np.ndarray | None = None) -> np.ndarray:
+        H = self.H_ if H is None else H
+        if H is None:
             raise RuntimeError("Model is not yet fitted. Call .fit() first.")
 
         X_arr = X.values if isinstance(X, pd.DataFrame) else X
-
         W, _, _ = non_negative_factorization(
             X_arr,
             n_components=self.n_components,
@@ -136,7 +136,7 @@ class NMF(BaseEstimator, TransformerMixin):
             beta_loss=self.beta_loss,
             max_iter=self.max_iter,
             update_H=False,
-            H=self.H_,
+            H=H,
         )
         return W
 

@@ -4,3 +4,4 @@ _partial_: true
 name: run_bicv_nmf
 n_components_min: 2
 n_components_max: 10
+h: 3
