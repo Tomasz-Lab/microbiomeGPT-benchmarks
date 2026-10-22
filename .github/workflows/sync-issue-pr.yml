@@ -1,9 +1,4 @@
 name: Sync Issue and Pull Request
-
-# Label synchronization is add-only: allowlisted issue labels are copied to the
-# PR, but removing a label from the issue never removes it from the PR.
-# Linking an issue in the PR sidebar emits no workflow event; run this workflow
-# manually (workflow_dispatch) or edit the PR to synchronize such a link.
 on:
   pull_request:
     types: [opened, edited, reopened, ready_for_review]
@@ -16,27 +11,16 @@ on:
         required: true
         type: number
 
-# The script never checks out or runs PR code; it only reads issues and PRs
-# and edits PR labels and descriptions.
 permissions:
   issues: read
   pull-requests: write
 
-# Serializes runs for the same PR (PR events and manual runs) and for the same
-# issue. Known limitations, kept simple on purpose:
-# - An issue-triggered run and a PR-triggered run for the same PR use different
-#   groups and can overlap. Each re-reads the PR before writing, but if the issue
-#   type changes while a PR run is in progress, that run may write the old
-#   keyword after the issue run wrote the new one. Re-run manually to correct.
-# - Re-reading and updating a PR body are separate requests, so a human edit made
-#   in between can be overwritten.
 concurrency:
   group: sync-issue-pr-${{ github.event.pull_request.number || inputs.pr_number || format('issue-{0}', github.event.issue.number) }}
   cancel-in-progress: false
 
 jobs:
   sync:
-    # Same-repository PRs only; fork PRs receive a read-only GITHUB_TOKEN.
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
@@ -47,9 +31,7 @@ jobs:
           script: |
             const {owner, repo} = context.repo;
             const thisRepo = `${owner}/${repo}`.toLowerCase();
-            // Issue labels copied to PRs. 'skip-changelog' is planned for changelog
-            // generation (#25) and must be created before it can take effect.
-            // Triage labels (help wanted, question, wontfix, epic) are not copied.
+            // TODO: 'skip-changelog' is planned for #25, but it's already here
             const allowed = new Set([
               'bug', 'feature', 'refactor', 'chore', 'CI/CD',
               'documentation', 'tests', 'research', 'skip-changelog'
@@ -57,14 +39,9 @@ jobs:
             const keywords = {bug: 'Fixes', feature: 'Closes', task: 'Resolves'};
             const start = '<!-- sync-issue-pr:start -->';
             const end = '<!-- sync-issue-pr:end -->';
-            // Leading newlines are consumed so that removing a block leaves no gap.
-            // Global expressions are only used with replace() and matchAll(), which do
-            // not depend on lastIndex state between calls.
-            const managedBlocks = /\n*<!-- sync-issue-pr:start -->[\s\S]*?<!-- sync-issue-pr:end -->/g;
 
-            // Issue reference: #N, owner/repo#N or an issues URL. The qualifier
-            // (groups 1/2) is checked against the current repository, so references
-            // to other repositories (e.g. the former upstream) are never local issues.
+            const managedBlocks = new RegExp(String.raw`\n*${start}[\s\S]*?${end}`, 'g');
+
             const ref = String.raw`(?:https?:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/|([\w.-]+\/[\w.-]+)?#)(\d+)\b`;
             // "Closes #N" or "Closes: #N"; never crosses a line break.
             const separator = String.raw`(?:[ \t]*:[ \t]*|[ \t]+)`;
@@ -73,12 +50,9 @@ jobs:
             );
             const relatedExpression = new RegExp(String.raw`\brelated[ \t]+to${separator}${ref}`, 'gi');
 
-            // Bodies edited in the web UI use CRLF; compare and write with LF only.
             const normalize = body => (body || '').replace(/\r\n?/g, '\n');
-            // The PR body without the workflow-managed block(s).
             const userContent = body => normalize(body).replace(managedBlocks, '');
-            // Text searched for issue references: user content without HTML comments
-            // (template instructions with example numbers) and code.
+
             const manualText = body => userContent(body)
               .replace(/<!--[\s\S]*?-->/g, '')
               .replace(/```[\s\S]*?```|`[^`\n]*`/g, '');
@@ -89,8 +63,6 @@ jobs:
               })
               .map(m => Number(m[3])))];
 
-            // Issues linked manually in the PR sidebar. userLinkedOnly excludes links
-            // GitHub derives from closing keywords, including the managed block.
             async function linkedByGithub(number) {
               const query = `query($owner:String!, $repo:String!, $number:Int!) {
                 repository(owner:$owner, name:$repo) {
@@ -107,9 +79,7 @@ jobs:
                 .map(issue => issue.number))];
             }
 
-            // Primary issue by priority: manual closing keyword > branch name >
-            // native sidebar link > "Related to". Disagreement within one level
-            // is a conflict; a higher level always wins over a lower one.
+            // Priority: manual closing keyword > branch name > sidebar link > "Related to"
             async function resolveIssue(pr) {
               const text = manualText(pr.body);
               const branchMatch = /^(?:[^/]+\/)?(\d+)-/.exec(pr.head.ref);
@@ -140,11 +110,9 @@ jobs:
               try {
                 ({data: issue} = await github.rest.issues.get({owner, repo, issue_number: number}));
               } catch (error) {
-                if (error.status === 404) {
-                  core.warning(`PR #${pr.number}: issue #${number} does not exist.`);
-                  return null;
-                }
-                throw error;
+                if (error.status !== 404) throw error;
+                core.warning(`PR #${pr.number}: issue #${number} does not exist.`);
+                return null;
               }
               if (issue.pull_request) {
                 core.warning(`PR #${pr.number}: #${number} is another PR, not an issue.`);
@@ -153,9 +121,6 @@ jobs:
               return issue;
             }
 
-            // Puts the block at the end of the (normalized) body, or removes all
-            // managed blocks when block is null. Content outside the markers is
-            // never changed, apart from trailing whitespace and line endings.
             function withManagedBlock(body, block) {
               const content = userContent(body);
               if (block) return [content.trimEnd(), block].filter(Boolean).join('\n\n');
@@ -167,7 +132,6 @@ jobs:
               .filter(label => allowed.has(label))
               .filter(label => !(pr.labels || []).some(existing => existing.name === label));
 
-            // Primary issue and the managed block it requires (null: no block).
             async function decide(pr) {
               const resolved = await resolveIssue(pr);
               let issue = null;
@@ -177,7 +141,6 @@ jobs:
                 issue = await getIssue(pr, resolved.number);
               }
 
-              // A manual closing keyword is left as written and needs no managed block.
               let block = null;
               if (issue && !resolved.manual) {
                 const keyword = keywords[(issue.type?.name || '').toLowerCase()];
@@ -190,8 +153,6 @@ jobs:
               return {number: resolved.number, issue, block};
             }
 
-            // pr may be stale (event payload, PR list). It is only used to skip PRs
-            // cheaply; anything written is based on the PR as re-read below.
             async function sync(pr, changedIssue = null) {
               if (pr.state !== 'open') return;
               if ((pr.head.repo?.full_name || '').toLowerCase() !== thisRepo) {
@@ -206,10 +167,7 @@ jobs:
 
               const {data: latest} = await github.rest.pulls.get({owner, repo, pull_number: pr.number});
               if (latest.state !== 'open') return;
-              // The decision depends on the branch name and the user-written body
-              // (trailing whitespace aside). If either changed, decide again from the
-              // latest state. If the PR no longer belongs to changedIssue, leave it to
-              // the run triggered by that PR edit.
+
               if (latest.head.ref !== pr.head.ref ||
                   userContent(latest.body).trimEnd() !== userContent(pr.body).trimEnd()) {
                 core.notice(`PR #${pr.number}: changed since the event; re-evaluating the latest state.`);
@@ -218,8 +176,6 @@ jobs:
               }
               const {issue, block} = decision;
 
-              // Not atomic: an edit made between the read above and this update is
-              // overwritten (GitHub has no conditional update for PR bodies).
               const oldBody = normalize(latest.body);
               const newBody = withManagedBlock(oldBody, block);
               if (newBody !== oldBody) {
@@ -240,21 +196,18 @@ jobs:
               const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number: number});
               await sync(pr);
             } else if (context.eventName === 'issues') {
-              if (context.payload.action === 'labeled' && !allowed.has(context.payload.label?.name)) {
-                core.info(`Label "${context.payload.label?.name}" is not synchronized.`);
+              const label = context.payload.label?.name;
+              if (context.payload.action === 'labeled' && !allowed.has(label)) {
+                core.info(`Label "${label}" is not synchronized.`);
                 return;
               }
-              const changedIssue = context.payload.issue.number;
-              // Search current open PRs so an issue label or type change can update them.
-              // This uses GitHub's native links as well as body/branch references.
               const prs = await github.paginate(github.rest.pulls.list, {
                 owner, repo, state: 'open', per_page: 100
               });
-              // One failing PR must not prevent the others from being synchronized.
               const failed = [];
               for (const pr of prs) {
                 try {
-                  await sync(pr, changedIssue);
+                  await sync(pr, context.payload.issue.number);
                 } catch (error) {
                   failed.push(pr.number);
                   core.error(`PR #${pr.number}: ${error.message}`);
