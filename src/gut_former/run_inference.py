@@ -20,7 +20,9 @@ def run_inference(cfg: DictConfig, **_):
     log.info("Starting inference script..\n ")
 
     if cfg.task.checkpoint_path is None:
-        raise ValueError("Inference requires a trained model checkpoint; set task.checkpoint_path.")
+        raise ValueError(
+            "Inference requires a trained model checkpoint; set checkpoint_path in config."
+        )
 
     output_path = Path(HydraConfig.get().runtime.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
