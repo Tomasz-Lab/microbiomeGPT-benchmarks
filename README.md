@@ -35,7 +35,7 @@ You can interact with the virtual environment in two ways:
 ```bash
 uv run <command>
 # Examples:
-# uv run python main.py
+# uv run python src/gut_former/main.py --help
 # uv run pytest
 ```
 
@@ -58,93 +58,135 @@ data/
 └── metadata_{dataset}.csv     # sample metadata, must include study_condition column
 ```
 
-All files are indexed by sample ID. The `{dataset}` name is passed via `--dataset` to all scripts.
+All files are indexed by sample ID. Set `dataset.name` to the `{dataset}` name when running an
+experiment.
 
-A sample dataset (`--dataset sample`) is included in the repository to get started quickly.
+A sample dataset (`dataset.name=sample`) is included in the repository to get started quickly.
+
+## ⚙️ Hydra Configuration
+
+All workflows run through the Hydra entry point:
+
+```bash
+uv run python src/gut_former/main.py experiment=<experiment> [key=value ...]
+```
+
+The default experiment is `nmf_pathways`. Available experiments are:
+
+| Experiment | Workflow |
+|---|---|
+| `gut_former_training` | Train GUT-FORMer |
+| `gut_former_inference` | Run GUT-FORMer inference |
+| `nmf_pathways` | Run NMF (pathways by default) |
+| `bicv_pathways` | Select an NMF rank using bi-cross-validation |
+
+Experiments compose the `task`, `model`, and `dataset` config groups. Override their settings
+using dotted keys, for example `dataset.name=my_dataset` or `task.epochs=55`. To inspect the
+resolved settings without running a workflow:
+
+```bash
+uv run python src/gut_former/main.py --cfg job experiment=gut_former_training
+```
+
+Hydra does not change the working directory. Each run writes its workflow outputs and Hydra
+configuration/log files under
+`outputs_hydra/<experiment>/<date>/<time>/`. Multiruns started with Hydra's `-m` option use
+`multirun_hydra/<experiment>/<date>/<time>/<job-number>/`.
 
 ## 🧠 Model
 
 ### Train from scratch
 
 ```bash
-uv run python src/gut_former/run_training.py
+uv run python src/gut_former/main.py \
+  experiment=gut_former_training \
+  dataset.name=sample \
+  task.epochs=55
 ```
 
-**Options:**
+Training settings are supplied as Hydra overrides:
 
-| Argument | Default | Description |
+| Override | Config default | Description |
 |---|---|---|
-| `--dataset` | `sample` | Dataset name |
-| `--epochs` | `55` | Number of training epochs |
-| `--embedding_dim` | `128` | Embedding dimension |
-| `--latent_dim` | `64` | Latent space dimension |
-| `--batch_size` | `16` | Batch size |
-| `--learning_rate` | `1.89e-4` | Learning rate |
+| `dataset.name` | `sample` | Dataset name |
+| `task.epochs` | `1` | Number of training epochs |
+| `task.batch_size` | `16` | Batch size |
+| `task.learning_rate` | `1.893292917167e-4` | Learning rate |
+| `task.checkpoint_path` | `null` | Optional checkpoint to load before training |
+| `model.embedding_dim` | `128` | Embedding dimension |
+| `model.latent_size` | `64` | Latent space dimension |
 
-**Outputs** saved to `output/`:
-- `{date}_{dataset}_checkpoint.pt` — model weights
-- `{date}_{dataset}_training_stats.csv` — per-epoch metrics
+Training statistics and the trained checkpoint are saved in the Hydra run directory. The
+checkpoint is named `{date}_{dataset}_checkpoint.pt`; `task.checkpoint_path` only specifies an
+optional checkpoint to load and is not overwritten.
 
 ### Fine-tuning
 
-Continue training from an existing checkpoint (replace the checkpoint path with your own):
+Continue training by setting `task.checkpoint_path` to the checkpoint to load. The new model
+checkpoint is saved separately in the current Hydra run directory, leaving the source checkpoint
+unchanged:
 
 ```bash
-nohup uv run python src/gut_former/run_training.py \
-  --dataset my_dataset \
-  --epochs 1000 \
-  --checkpoint output/{date}_{dataset}_checkpoint.pt \
-  > output/training.log 2>&1 &
-```
-
-Follow progress:
-
-```bash
-tail -f output/training.log
+uv run python src/gut_former/main.py \
+  experiment=gut_former_training \
+  dataset.name=my_dataset \
+  task.epochs=1000 \
+  task.checkpoint_path=/path/to/checkpoint.pt
 ```
 
 ### Inference
 
+Inference requires a trained checkpoint; unlike training from scratch, it cannot run without
+`task.checkpoint_path`.
+
 ```bash
-uv run python src/gut_former/run_inference.py \
-  --dataset sample \
-  --checkpoint output/20260412_sample_checkpoint.pt
+uv run python src/gut_former/main.py \
+  experiment=gut_former_inference \
+  dataset.name=sample \
+  task.checkpoint_path=output/sample_checkpoint.pt
 ```
 
-**Outputs** saved to `output/`:
-- `latent_{dataset}.csv` — latent embeddings
-- `pred_taxonomy_{dataset}.csv` — predicted taxonomy
-- `pred_pathways_{dataset}.csv` — predicted pathways
+Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
+`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory. The configured default
+checkpoint uses the `PROJECT_ROOT` environment variable; alternatively, override
+`task.checkpoint_path` as in the example.
 
 ## 🧬 NMF
 
 NMF decomposes microbiome data into latent signatures. Supports both pathway and taxonomy data, with optional filtering by health status.
 
 ```bash
-uv run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
+uv run python src/gut_former/main.py \
+  experiment=nmf_pathways \
+  dataset.name=sample
 ```
 
-**Options:**
+The `nmf_pathways` experiment defaults to pathway data and all samples. Settings can be
+overridden with:
 
-| Argument | Default | Description |
+| Override | Config default | Description |
 |---|---|---|
-| `--type` | required | Data type: `pathways` or `taxonomy` |
-| `--dataset` | `sample` | Dataset name |
-| `--n_signatures` | `8` | Number of NMF signatures |
-| `--n_runs` | `100` | Runs per seed — best selected by validation metrics |
-| `--filter` | `all` | Sample subset: `all`, `healthy`, `non-healthy` |
+| `dataset.kind` | `pathways` | Data type: `pathways` or `taxonomy` |
+| `dataset.name` | `sample` | Dataset name |
+| `dataset.subset` | `all` | Sample subset: `all`, `healthy`, or `non-healthy` |
+| `model.parameters.n_components` | `8` | Number of NMF signatures |
+| `model.parameters.n_runs` | `10` | NMF runs |
 
 **Examples:**
 
 ```bash
 # Pathway NMF, all samples
-uv run python src/gut_former/nmf/run_nmf.py --type pathways --dataset sample
+uv run python src/gut_former/main.py experiment=nmf_pathways dataset.name=sample
 
 # Taxonomy NMF, healthy samples only
-uv run python src/gut_former/nmf/run_nmf.py --type taxonomy --dataset sample --filter healthy
+uv run python src/gut_former/main.py \
+  experiment=nmf_pathways \
+  dataset.kind=taxonomy \
+  dataset.name=sample \
+  dataset.subset=healthy
 ```
 
-**Outputs** saved to `output/nmf/`:
+NMF outputs are saved in the Hydra run directory:
 - `H_{n}_{dataset}_{type}_{filter}.csv` — signature matrix
 - `W_train_{n}_{dataset}_{type}_{filter}.csv` — sample loadings, train set
 - `W_val_{n}_{dataset}_{type}_{filter}.csv` — sample loadings, val set
@@ -155,20 +197,22 @@ uv run python src/gut_former/nmf/run_nmf.py --type taxonomy --dataset sample --f
 Bi-Cross-Validation selects the optimal number of NMF signatures for pathway data by evaluating reconstruction quality on held-out data blocks across a range of ranks. For taxonomy, the number of signatures is established in the literature.
 
 ```bash
-uv run python src/gut_former/nmf/run_bicv.py --dataset sample
+uv run python src/gut_former/main.py \
+  experiment=bicv_pathways \
+  dataset.name=sample
 ```
 
-**Options:**
+The experiment defaults to pathway data. Rank-selection settings are:
 
-| Argument | Default | Description |
+| Override | Config default | Description |
 |---|---|---|
-| `--dataset` | `sample` | Dataset name |
-| `--n_signatures_min` | `2` | Minimum number of signatures to test |
-| `--n_signatures_max` | `15` | Maximum number of signatures to test |
-| `--n_runs` | `50` | NMF runs per fold per signature |
+| `dataset.name` | `sample` | Dataset name |
+| `task.n_components_min` | `2` | Minimum number of signatures to test |
+| `task.n_components_max` | `10` | Maximum number of signatures to test |
+| `model.parameters.n_runs` | `10` | NMF runs per fold per signature |
 
-**Output** saved to `output/bicv/`:
-- `bicv_nmf_stats.csv` — metrics for all folds, signatures, and runs
+The `bicv_nmf_stats.csv` output in the Hydra run directory contains metrics for all folds,
+signatures, and runs.
 
 The optimal signature count is printed at the end of the run.
 

@@ -3,7 +3,7 @@ from torch import nn
 
 
 class BacteriaModel(nn.Module):
-    def __init__(self, num_pathways, num_bacteria, embedding_dim, latent_size):
+    def __init__(self, num_pathways, num_bacteria, embedding_dim, latent_size, **_):
         super().__init__()
 
         self.embedding_dim = embedding_dim

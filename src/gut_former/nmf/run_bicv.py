@@ -1,16 +1,18 @@
-import argparse
 import logging
 import time
+from pathlib import Path
 
+import hydra
 import numpy as np
 import pandas as pd
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 
 from gut_former.nmf.nmf_core import nmf
 from gut_former.utils.log_config import setup_logging
 from gut_former.utils.metrics import cos_sim, exp_var
 from gut_former.utils.metrics import l2norm as calc_l2norm
 from gut_former.utils.metrics import rss as calc_rss
-from gut_former.utils.project_paths import find_data_path, find_output_path
 
 log = logging.getLogger(__name__)
 
@@ -160,43 +162,23 @@ def run_cv(folds, signatures, outdir, n_runs=50):
     log.info("Best signature: %d (evar_mean=%.3f)", best, summary.loc[best, "evar_mean"])
 
 
-def main():
+def run_bicv_task(cfg: DictConfig, **_):
     setup_logging()
 
     log.info("Starting biCV script..")
 
-    p = argparse.ArgumentParser()
-    p.add_argument(
-        "--dataset", type=str, default="sample", help="Dataset name — loads pathways_{dataset}.csv"
-    )
-    p.add_argument(
-        "--n_signatures_min", type=int, default=2, help="Minimum number of NMF components to test"
-    )
-    p.add_argument(
-        "--n_signatures_max", type=int, default=15, help="Maximum number of NMF components to test"
-    )
-    p.add_argument(
-        "--n_runs", type=int, default=50, help="Number of NMF runs per fold per signature"
-    )
-    args = p.parse_args()
-
     # Loading data
-    data_path = find_data_path()
-    X = (
-        pd.read_csv(f"{data_path}/pathways_{args.dataset}.csv", index_col=[0], low_memory=False)
-        .fillna(0)
-        .sort_index()
-    )
+    X = hydra.utils.instantiate(cfg.dataset)
 
     log.info("Data loaded | shape: %s", X.shape)
 
     # Output directory
-    output_path = find_output_path() / "bicv"
+    output_path = Path(HydraConfig.get().runtime.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     log.info("Output directory: %s", output_path)
 
-    signatures = list(range(args.n_signatures_min, args.n_signatures_max + 1))
+    signatures = list(range(cfg.task.n_components_min, cfg.task.n_components_max + 1))
     log.info("Signatures to test: %s", signatures)
 
     blocks = shuffle_and_split(X.values)
@@ -204,10 +186,6 @@ def main():
     folds_by_idx = {idx: split_into_abcd(m) for idx, m in matrices.items()}
 
     t_start = time.time()
-    run_cv(folds_by_idx, signatures, output_path, n_runs=args.n_runs)
+    run_cv(folds_by_idx, signatures, output_path, n_runs=cfg.model.parameters.n_runs)
     elapsed = time.time() - t_start
     log.info("Done in %dm %ds", elapsed // 60, elapsed % 60)
-
-
-if __name__ == "__main__":
-    main()

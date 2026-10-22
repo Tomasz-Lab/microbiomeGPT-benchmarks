@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - /task: run_bicv_nmf
+  - /model: nmf
+  - /dataset: csv
+  - _self_
+
+experiment:
+  name: bicv_pathways
+
+dataset:
+  kind: pathways
+  subset: all

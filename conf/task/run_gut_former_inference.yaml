@@ -1,0 +1,10 @@
+_target_: gut_former.run_inference.run_inference
+_partial_: true
+
+name: gut_former_inference
+
+batch_size: 16
+learning_rate: 1.893292917167e-4
+epochs: 55
+checkpoint_path: # ${oc.env:PROJECT_ROOT}/output/checkpoint_sample.pt
+verbose: true
