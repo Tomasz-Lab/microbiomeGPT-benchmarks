@@ -1,124 +1,82 @@
-import argparse
 import logging
 from datetime import date
+from pathlib import Path
 
+import hydra
 import pandas as pd
 import torch
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 from torch.nn.functional import mse_loss
-from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from gut_former.config import TrainingConfig
 from gut_former.dataset import BacteriaDataset
-from gut_former.loss import CompositeLoss
-from gut_former.model import BacteriaModel
 from gut_former.utils.data_prep import train_val_split
 from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path, find_output_path
+from gut_former.utils.project_paths import find_data_path
 
 log = logging.getLogger(__name__)
 
 
-def main():
-    # Handling Args
-
-    config = TrainingConfig()
-    p = argparse.ArgumentParser()
-
-    p.add_argument(
-        "--dataset", type=str, default=config.data.dataset, help="Name of the dataset to use."
-    )
-    p.add_argument(
-        "--embedding_dim",
-        type=int,
-        default=config.model.embedding_dim,
-        help="Dimensionality of the input embeddings.",
-    )
-    p.add_argument(
-        "--latent_dim",
-        type=int,
-        default=config.model.latent_dim,
-        help="Dimensionality of the model's latent representation.",
-    )
-    p.add_argument(
-        "--batch_size",
-        type=int,
-        default=config.batch_size,
-        help="Number of samples processed per batch",
-    )
-    p.add_argument(
-        "--learning_rate",
-        type=float,
-        default=config.learning_rate,
-        help="Learning rate used for training.",
-    )
-    p.add_argument("--epochs", type=int, default=config.epochs, help="Number of training epochs.")
-    p.add_argument(
-        "--verbose",
-        action=argparse.BooleanOptionalAction,
-        default=config.verbose,
-        help="Enable or disable verbose logging.",
-    )
-
-    p.add_argument(
-        "--checkpoint",
-        type=str,
-        default=config.checkpoint_path,
-        help="Path to checkpoint to resume training from",
-    )
-    args = p.parse_args()
-
+def run_training(cfg: DictConfig, **_):
     # Setting up project
-    setup_logging(logging.INFO if args.verbose else logging.WARNING)
+    setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
     log.info("Starting training script..\n ")
 
     today_str = date.today().strftime("%Y%m%d")
-    output_path = find_output_path()
-    checkpoint_path = (
-        f"{output_path}/{today_str}_{args.dataset}_{config.model.model_version}_checkpoint.pt"
-    )
-    stats_path = f"{output_path}/{today_str}_{args.dataset}_training_stats.csv"
+    output_path = Path(HydraConfig.get().runtime.output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    stats_path = output_path / f"{today_str}_{cfg.dataset.name}_training_stats.csv"
+    checkpoint_output_path = output_path / f"{today_str}_{cfg.dataset.name}_checkpoint.pt"
 
     # Loading & Preparing Data
+    # To do: refactor later when we will be dealing with task for dataload refacotr
     data_path = find_data_path()
     Xt_df = (
-        pd.read_csv(f"{data_path}/taxonomy_{args.dataset}.csv", index_col=[0], low_memory=False)
+        pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.taxa_multiplier
     )
     Xp_df = (
-        pd.read_csv(f"{data_path}/pathways_{args.dataset}.csv", index_col=[0], low_memory=False)
+        pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
         .sort_index()
-        * 100
+        * cfg.dataset.pathways_multiplier
     )
 
     Xt_train, Xt_test = train_val_split(Xt_df)
     Xp_train, Xp_test = train_val_split(Xp_df)
 
     train_dataset = BacteriaDataset(Xt_train, Xp_train)
-    train_dloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    train_dloader = DataLoader(train_dataset, batch_size=cfg.task.batch_size, shuffle=True)
 
     test_dataset = BacteriaDataset(Xt_test, Xp_test)
-    test_dloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    test_dloader = DataLoader(test_dataset, batch_size=cfg.task.batch_size, shuffle=False)
 
     # Defining Model
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = BacteriaModel(
-        Xp_df.shape[1],
-        Xt_df.shape[1],
-        args.embedding_dim,
-        args.latent_dim,
+    model_builder = hydra.utils.instantiate(
+        cfg.model,
+    )
+
+    model = model_builder(
+        num_pathways=Xp_df.shape[1],
+        num_bacteria=Xt_df.shape[1],
     ).to(DEVICE)
 
-    optimizer = Adam(model.parameters(), lr=args.learning_rate, weight_decay=0.001)
-    composite_loss = CompositeLoss()
+    optimizer_fn = hydra.utils.instantiate(cfg.task.optimizer)
+    optimizer = optimizer_fn(model.parameters())
 
-    if args.checkpoint:
-        model.load_state_dict(torch.load(args.checkpoint, map_location=DEVICE))
-        log.info("Resumed from checkpoint: %s", args.checkpoint)
+    loss_func = hydra.utils.instantiate(cfg.task.loss)
+
+    if cfg.task.checkpoint_path is not None:
+        model.load_state_dict(torch.load(cfg.task.checkpoint_path, map_location=DEVICE))
+        log.info("Resumed from checkpoint: %s", cfg.task.checkpoint_path)
+    else:
+        log.info("No checkpoint configured; starting training from scratch.")
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -131,7 +89,7 @@ def main():
 
     # Training Model
     history = []
-    for epoch in range(args.epochs):
+    for epoch in range(cfg.task.epochs):
         model.train()
 
         train_loss = 0.0
@@ -149,7 +107,7 @@ def main():
 
             Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
 
-            loss = composite_loss(Xt_b, Xt_pred, Xp_b, Xp_pred)
+            loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
             loss.backward()
             optimizer.step()
 
@@ -172,7 +130,7 @@ def main():
                 Xp_b = Xp_b.to(DEVICE)
 
                 Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
-                loss = composite_loss(Xt_b, Xt_pred, Xp_b, Xp_pred)
+                loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
 
                 test_loss += loss.item() * batch_size
                 test_t_mse += mse_loss(Xt_pred, Xt_b).item() * batch_size
@@ -191,7 +149,7 @@ def main():
 
         if epoch % 10 == 1:
             log.info(f"Epoch: {epoch} -> Test Loss: {test_loss:.3f}")
-            torch.save(model.state_dict(), checkpoint_path)
+            torch.save(model.state_dict(), checkpoint_output_path)
 
     stats_cols = [
         "epoch",
@@ -206,13 +164,9 @@ def main():
     stats_df = pd.DataFrame(history, columns=stats_cols)
     stats_df.to_csv(stats_path, index=False)
 
-    torch.save(model.state_dict(), checkpoint_path)
+    torch.save(model.state_dict(), checkpoint_output_path)
     log.info(
         "\nTraining completed.\nSaved outputs:\n  - Training stats: %s\n  - Model checkpoint: %s\n",
         stats_path,
-        checkpoint_path,
+        checkpoint_output_path,
     )
-
-
-if __name__ == "__main__":
-    main()

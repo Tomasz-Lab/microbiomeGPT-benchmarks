@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -14,18 +13,6 @@ log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class NMFConfig:
-    n_components: int
-    init: str = "nndsvdar"
-    solver: str = "mu"
-    beta_loss: str = "kullback-leibler"
-    max_iter: int = 2000
-    n_runs: int = 100
-    n_jobs: int = -2
-    selection_metric: Literal["exp_var", "cos_sim", "composite"] = "exp_var"
-
-
-@dataclass(frozen=True)
 class NMFFitResult:
     seed: int
     exp_var: float
@@ -35,20 +22,25 @@ class NMFFitResult:
 
 
 class NMF(BaseEstimator, TransformerMixin):
-    def __init__(self, config: NMFConfig):
-        if not isinstance(config, NMFConfig):
-            raise TypeError(f"Expected NMFConfig, received: {type(config).__name__}")
-
-        self.config = config
-
-        self.n_components = config.n_components
-        self.init = config.init
-        self.solver = config.solver
-        self.beta_loss = config.beta_loss
-        self.max_iter = config.max_iter
-        self.n_runs = config.n_runs
-        self.n_jobs = config.n_jobs
-        self.selection_metric = config.selection_metric
+    def __init__(
+        self,
+        n_components: int,
+        init: str,
+        solver: str,
+        beta_loss: str,
+        max_iter: int,
+        n_runs: int,
+        n_jobs: int,
+        selection_metric: str,
+    ):
+        self.n_components = n_components
+        self.init = init
+        self.solver = solver
+        self.beta_loss = beta_loss
+        self.max_iter = max_iter
+        self.n_runs = n_runs
+        self.n_jobs = n_jobs
+        self.selection_metric = selection_metric
 
         self.H_: np.ndarray | None = None
         self.W_train_: np.ndarray | None = None
