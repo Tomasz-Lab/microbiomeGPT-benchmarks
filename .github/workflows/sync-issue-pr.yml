@@ -122,9 +122,21 @@ jobs:
             }
 
             function withManagedBlock(body, block) {
-              const content = userContent(body);
-              if (block) return [content.trimEnd(), block].filter(Boolean).join('\n\n');
-              return content === body ? body : content.trimEnd();
+              const anchor = new RegExp(String.raw`${start}[\s\S]*?${end}`).exec(body);
+              if (anchor) {
+                const rest = body.slice(anchor.index + anchor[0].length).replace(managedBlocks, '');
+                return body.slice(0, anchor.index) + (block || start + end) + rest;
+              }
+              if (!block) return body;
+
+              const masked = body.replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '));
+              const heading = /^(#{1,6})[ \t]+Related Issues?[ \t]*#*[ \t]*$/im.exec(masked);
+              if (!heading) return [body.trimEnd(), block].filter(Boolean).join('\n\n');
+              const sectionStart = heading.index + heading[0].length;
+              const next = new RegExp(String.raw`^#{1,${heading[1].length}}[ \t]`, 'm').exec(masked.slice(sectionStart));
+              const sectionEnd = next ? sectionStart + next.index : body.length;
+              return [body.slice(0, sectionEnd).trimEnd(), block, body.slice(sectionEnd)]
+                .filter(Boolean).join('\n\n');
             }
 
             const missingLabels = (issue, pr) => (issue?.labels || [])
