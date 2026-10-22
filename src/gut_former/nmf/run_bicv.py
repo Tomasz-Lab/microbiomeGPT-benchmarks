@@ -7,6 +7,7 @@ import hydra
 import numpy as np
 import pandas as pd
 from hydra.core.hydra_config import HydraConfig
+from joblib import Parallel, delayed
 from omegaconf import DictConfig, OmegaConf
 
 from gut_former.nmf.nmf_core import NMF
@@ -217,17 +218,23 @@ def run_bicv_task(cfg: DictConfig, **_):
     log.info("Signatures to test: %s", signatures)
 
     M = shuffle_rows_and_cols(X.values, np.random.default_rng())
-    results = []
-    for fold_idx, (A, B, C, D) in enumerate(make_folds(M, h=cfg.task.h), start=1):
-        t_start = time.time()
 
-        for signature in signatures:
-            rows = evaluate_signature(A, B, C, D, params, signature)
-            results += [{"fold": fold_idx, **row} for row in rows]
+    def process_task(fold_idx, A, B, C, D, signature):
+        rows = evaluate_signature(A, B, C, D, params, signature)
+        return [{"fold": fold_idx, **row} for row in rows]
 
-        log.info("Fold %d done in %.0fs", fold_idx, time.time() - t_start)
+    t_start = time.time()
 
-    # Save and summarize
+    results_nested = Parallel(n_jobs=cfg.task.n_jobs)(
+        delayed(process_task)(fold_idx, A, B, C, D, signature)
+        for fold_idx, (A, B, C, D) in enumerate(make_folds(M, h=cfg.task.h), start=1)
+        for signature in signatures
+    )
+
+    results = [row for sublist in results_nested for row in sublist]
+
+    log.info("BiCV done in %.0fs", time.time() - t_start)
+
     df = pd.DataFrame(results)
     df.to_csv(output_path / "bicv_nmf_stats.csv", index=False)
 
