@@ -8,14 +8,13 @@ Summarize the main implementation changes.
 ## Related Issue
 
 <!--
-Reference the primary issue, e.g. #123.
-Closing keywords: Closes #123, Fixes #123, Resolves #123
-or just add related issue by referencing via #123.
-TODO: Closing keywords handled automatically
+The workflow automatically adds the closing keyword and issue number
+based on the linked issue and its type.
+
+Do not edit the automatically generated block.
 -->
 
-Closes 
-
+<!-- sync-issue-pr:start --><!-- sync-issue-pr:end -->
 
 ## Testing
 
