@@ -216,6 +216,21 @@ signatures, and runs.
 
 The optimal signature count is printed at the end of the run.
 
+
+## Data profiling
+
+Generate an interactive Sweetviz report with dataset summaries, column distributions, and feature
+associations:
+
+```bash
+uv run python src/gut_former/main.py task=run_data_profiling
+```
+
+By default, this profiles `data/metadata_gutformer.csv`. Set `task.path=path/to/data.csv` to use
+another CSV. The HTML report, `data_profiling_report.html`, is saved in the Hydra run directory
+under `outputs_hydra/`.
+
+
 ## 🔧 Troubleshooting
 
 To start fresh (remove virtual environment and reinstall):
