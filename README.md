@@ -75,13 +75,16 @@ The default experiment is `nmf_pathways`. Available experiments are:
 
 | Experiment | Workflow |
 |---|---|
-| `gut_former_training` | Train GUT-FORMer |
-| `gut_former_inference` | Run GUT-FORMer inference |
+| `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
+| `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
+| `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
+| `gut_former_inference_legacy` | Run GUT-FORMer inference with the original script |
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups. Override their settings
-using dotted keys, for example `dataset.name=my_dataset` or `task.epochs=55`. To inspect the
+Experiments compose the `task`, `model`, and `dataset` config groups (training also composes
+`trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
+`trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
 ```bash
@@ -95,13 +98,18 @@ configuration/log files under
 
 ## 🧠 Model
 
+Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
+`GutFormerModule` (`src/gut_former/lit_module.py`) holds the training, validation and prediction
+steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
+can be used directly from notebooks or HPC scripts without Hydra.
+
 ### Train from scratch
 
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
   dataset.name=sample \
-  task.epochs=55
+  trainer.max_epochs=55
 ```
 
 Training settings are supplied as Hydra overrides:
@@ -109,47 +117,83 @@ Training settings are supplied as Hydra overrides:
 | Override | Config default | Description |
 |---|---|---|
 | `dataset.name` | `sample` | Dataset name |
-| `task.epochs` | `1` | Number of training epochs |
+| `trainer.max_epochs` | `55` | Number of training epochs |
+| `trainer.accelerator` | `auto` | `auto` (CUDA if available, else CPU), `cpu`, `cuda`/`gpu` |
+| `trainer.devices` | `auto` | Number of devices |
 | `task.batch_size` | `16` | Batch size |
-| `task.learning_rate` | `1.893292917167e-4` | Learning rate |
-| `task.checkpoint_path` | `null` | Optional checkpoint to load before training |
+| `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
+| `task.seed` | `0` | Random seed |
+| `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
+| `task.init_weights` | `null` | Model weights to start from (`.ckpt` or legacy `.pt`); optimizer starts fresh |
 | `model.embedding_dim` | `128` | Embedding dimension |
 | `model.latent_size` | `64` | Latent space dimension |
 
-Training statistics and the trained checkpoint are saved in the Hydra run directory. The
-checkpoint is named `{date}_{dataset}_checkpoint.pt`; `task.checkpoint_path` only specifies an
-optional checkpoint to load and is not overwritten.
+Outputs in the Hydra run directory:
 
-### Fine-tuning
+- `{date}_{dataset}_training_stats.csv` — per-epoch metrics (same columns as before; `test_*`
+  columns hold the held-out validation split)
+- `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
+- `lightning_logs/` — Lightning's CSV logs and hyperparameters
 
-Continue training by setting `task.checkpoint_path` to the checkpoint to load. The new model
-checkpoint is saved separately in the current Hydra run directory, leaving the source checkpoint
-unchanged:
+On Apple Silicon `auto` uses the CPU: the loss uses `torch.cdist`, whose backward pass is not
+implemented for MPS.
+
+### Resume and fine-tuning
+
+Resume an interrupted run from a Lightning checkpoint (`trainer.max_epochs` is the total, not the
+number of additional epochs):
+
+```bash
+uv run python src/gut_former/main.py \
+  experiment=gut_former_training \
+  trainer.max_epochs=100 \
+  task.resume_from=/path/to/checkpoints/last.ckpt
+```
+
+Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
 
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
   dataset.name=my_dataset \
-  task.epochs=1000 \
-  task.checkpoint_path=/path/to/checkpoint.pt
+  trainer.max_epochs=1000 \
+  task.init_weights=/path/to/checkpoint.pt
 ```
+
+With a Lightning checkpoint, both `task.resume_from` and `task.init_weights` fail early if the
+dataset's taxonomy or pathway columns (names or order) differ from the checkpoint's. Legacy `.pt`
+files store no feature names, so they are loaded with a warning instead.
 
 ### Inference
 
-Inference requires a trained checkpoint; unlike training from scratch, it cannot run without
-`task.checkpoint_path`.
+Inference requires a trained checkpoint, either a Lightning `.ckpt` or a legacy `.pt` file:
 
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_inference \
   dataset.name=sample \
-  task.checkpoint_path=output/sample_checkpoint.pt
+  task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
 
+A Lightning checkpoint stores the model shape and feature names, so inference fails early if the
+dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
+rebuilt from `model.*` and the dataset, without that check.
+
 Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
-`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory. The configured default
-checkpoint uses the `PROJECT_ROOT` environment variable; alternatively, override
-`task.checkpoint_path` as in the example.
+`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory.
+
+### Legacy scripts
+
+The original scripts are kept in `src/gut_former/legacy/` and run with the `*_legacy`
+experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
+`{date}_{dataset}_checkpoint.pt` state dict:
+
+```bash
+uv run python src/gut_former/main.py experiment=gut_former_training_legacy task.epochs=55
+uv run python src/gut_former/main.py \
+  experiment=gut_former_inference_legacy \
+  task.checkpoint_path=/path/to/checkpoint.pt
+```
 
 ## 🧬 NMF
 
