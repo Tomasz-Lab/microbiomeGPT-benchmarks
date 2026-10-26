@@ -1,0 +1,6 @@
+_target_: scripts.generate_data_profiling_report.run_data_profiling_report
+_partial_: true
+
+name: run_data_profiling
+path: ${dataset.metadata_path}
+output: data_profiling_report
