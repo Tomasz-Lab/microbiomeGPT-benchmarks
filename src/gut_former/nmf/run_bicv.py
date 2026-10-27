@@ -217,7 +217,7 @@ def run_bicv_task(cfg: DictConfig, **_):
     params = OmegaConf.to_container(cfg.model.parameters, resolve=True)
     log.info("Signatures to test: %s", signatures)
 
-    M = shuffle_rows_and_cols(X.values, np.random.default_rng())
+    M = shuffle_rows_and_cols(X.values, np.random.default_rng(seed=cfg.task.seed))
 
     def process_task(fold_idx, A, B, C, D, signature):
         rows = evaluate_signature(A, B, C, D, params, signature)

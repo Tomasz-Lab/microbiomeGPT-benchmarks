@@ -6,3 +6,4 @@ n_components_min: 2
 n_components_max: 10
 h: 3
 n_jobs: -2
+seed: 42
