@@ -80,16 +80,21 @@ def make_folds(M: np.ndarray, h: int = 3):
 
         For the r=1, c=1 example above: A=9, B=[7 8], C=[3 / 6], D=[1 2 / 4 5].
     """
-    row_shift = M.shape[0] // h
-    column_shift = M.shape[1] // h
+    rows, cols = M.shape
 
     for r, c in product(range(h), repeat=2):
-        R = np.roll(M, (r * row_shift, c * column_shift), axis=(0, 1))
+        r_shift = r * rows // h
+        c_shift = c * cols // h
 
-        A = R[:row_shift, :column_shift]
-        B = R[:row_shift, column_shift:]
-        C = R[row_shift:, :column_shift]
-        D = R[row_shift:, column_shift:]
+        r_size = ((r + 1) * rows // h) - r_shift
+        c_size = ((c + 1) * cols // h) - c_shift
+
+        R = np.roll(M, (r_shift, c_shift), axis=(0, 1))
+
+        A = R[:r_size, :c_size]
+        B = R[:r_size, c_size:]
+        C = R[r_size:, :c_size]
+        D = R[r_size:, c_size:]
 
         yield A, B, C, D
 
