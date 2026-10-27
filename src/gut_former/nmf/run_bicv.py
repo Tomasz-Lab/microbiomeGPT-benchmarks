@@ -230,7 +230,7 @@ def run_bicv_task(cfg: DictConfig, **_):
 
     t_start = time.time()
 
-    results_nested = Parallel(n_jobs=cfg.task.n_jobs)(
+    results_nested = Parallel(n_jobs=cfg.task.n_jobs, verbose=10)(
         delayed(process_task)(fold_idx, A, B, C, D, signature)
         for fold_idx, (A, B, C, D) in enumerate(make_folds(M, h=cfg.task.h), start=1)
         for signature in signatures
