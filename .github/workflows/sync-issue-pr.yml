@@ -1,0 +1,229 @@
+name: Sync Issue and Pull Request
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review]
+  issues:
+    types: [labeled, typed, untyped]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to synchronize"
+        required: true
+        type: number
+
+permissions:
+  issues: read
+  pull-requests: write
+
+concurrency:
+  group: sync-issue-pr-${{ github.event.pull_request.number || inputs.pr_number || format('issue-{0}', github.event.issue.number) }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const thisRepo = `${owner}/${repo}`.toLowerCase();
+            // TODO: 'skip-changelog' is planned for #25, but it's already here
+            const allowed = new Set([
+              'bug', 'feature', 'refactor', 'chore', 'CI/CD',
+              'documentation', 'tests', 'research', 'skip-changelog'
+            ]);
+            const keywords = {bug: 'Fixes', feature: 'Closes', task: 'Resolves'};
+            const start = '<!-- sync-issue-pr:start -->';
+            const end = '<!-- sync-issue-pr:end -->';
+
+            const managedBlocks = new RegExp(String.raw`\n*${start}[\s\S]*?${end}`, 'g');
+
+            const ref = String.raw`(?:https?:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/|([\w.-]+\/[\w.-]+)?#)(\d+)\b`;
+            // "Closes #N" or "Closes: #N"; never crosses a line break.
+            const separator = String.raw`(?:[ \t]*:[ \t]*|[ \t]+)`;
+            const closingExpression = new RegExp(
+              String.raw`\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)${separator}${ref}`, 'gi'
+            );
+            const relatedExpression = new RegExp(String.raw`\brelated[ \t]+to${separator}${ref}`, 'gi');
+
+            const normalize = body => (body || '').replace(/\r\n?/g, '\n');
+            const userContent = body => normalize(body).replace(managedBlocks, '');
+
+            const manualText = body => userContent(body)
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/```[\s\S]*?```|`[^`\n]*`/g, '');
+            const references = (text, expression) => [...new Set([...text.matchAll(expression)]
+              .filter(m => {
+                const qualifier = m[1] || m[2];
+                return !qualifier || qualifier.toLowerCase() === thisRepo;
+              })
+              .map(m => Number(m[3])))];
+
+            async function linkedByGithub(number) {
+              const query = `query($owner:String!, $repo:String!, $number:Int!) {
+                repository(owner:$owner, name:$repo) {
+                  pullRequest(number:$number) {
+                    closingIssuesReferences(first:20, userLinkedOnly:true) {
+                      nodes { number repository { nameWithOwner } }
+                    }
+                  }
+                }
+              }`;
+              const data = await github.graphql(query, {owner, repo, number});
+              return [...new Set((data.repository.pullRequest.closingIssuesReferences.nodes || [])
+                .filter(issue => issue.repository.nameWithOwner.toLowerCase() === thisRepo)
+                .map(issue => issue.number))];
+            }
+
+            // Priority: manual closing keyword > branch name > sidebar link > "Related to"
+            async function resolveIssue(pr) {
+              const text = manualText(pr.body);
+              const branchMatch = /^(?:[^/]+\/)?(\d+)-/.exec(pr.head.ref);
+              const branch = branchMatch ? Number(branchMatch[1]) : null;
+
+              const manual = references(text, closingExpression);
+              if (manual.length > 1) return {problem: `manual closing keywords reference #${manual.join(', #')}`};
+              if (manual.length === 1) {
+                if (branch !== null && branch !== manual[0]) {
+                  core.warning(`PR #${pr.number}: branch references #${branch}, manual closing keyword #${manual[0]} takes precedence.`);
+                }
+                return {number: manual[0], manual: true};
+              }
+              if (branch !== null) return {number: branch};
+
+              const linked = await linkedByGithub(pr.number);
+              if (linked.length > 1) return {problem: `linked issues #${linked.join(', #')}`};
+              if (linked.length === 1) return {number: linked[0]};
+
+              const related = references(text, relatedExpression);
+              if (related.length > 1) return {problem: `"Related to" references #${related.join(', #')}`};
+              if (related.length === 1) return {number: related[0]};
+              return {problem: 'no issue reference found'};
+            }
+
+            async function getIssue(pr, number) {
+              let issue;
+              try {
+                ({data: issue} = await github.rest.issues.get({owner, repo, issue_number: number}));
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                core.warning(`PR #${pr.number}: issue #${number} does not exist.`);
+                return null;
+              }
+              if (issue.pull_request) {
+                core.warning(`PR #${pr.number}: #${number} is another PR, not an issue.`);
+                return null;
+              }
+              return issue;
+            }
+
+            function withManagedBlock(body, block) {
+              const anchor = new RegExp(String.raw`${start}[\s\S]*?${end}`).exec(body);
+              if (anchor) {
+                const rest = body.slice(anchor.index + anchor[0].length).replace(managedBlocks, '');
+                return body.slice(0, anchor.index) + (block || start + end) + rest;
+              }
+              if (!block) return body;
+
+              const masked = body.replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '));
+              const heading = /^(#{1,6})[ \t]+Related Issues?[ \t]*#*[ \t]*$/im.exec(masked);
+              if (!heading) return [body.trimEnd(), block].filter(Boolean).join('\n\n');
+              const sectionStart = heading.index + heading[0].length;
+              const next = new RegExp(String.raw`^#{1,${heading[1].length}}[ \t]`, 'm').exec(masked.slice(sectionStart));
+              const sectionEnd = next ? sectionStart + next.index : body.length;
+              return [body.slice(0, sectionEnd).trimEnd(), block, body.slice(sectionEnd)]
+                .filter(Boolean).join('\n\n');
+            }
+
+            const missingLabels = (issue, pr) => (issue?.labels || [])
+              .map(label => typeof label === 'string' ? label : label.name)
+              .filter(label => allowed.has(label))
+              .filter(label => !(pr.labels || []).some(existing => existing.name === label));
+
+            async function decide(pr) {
+              const resolved = await resolveIssue(pr);
+              let issue = null;
+              if (resolved.number === undefined) {
+                core.warning(`PR #${pr.number}: cannot determine the primary issue (${resolved.problem}).`);
+              } else {
+                issue = await getIssue(pr, resolved.number);
+              }
+
+              let block = null;
+              if (issue && !resolved.manual) {
+                const keyword = keywords[(issue.type?.name || '').toLowerCase()];
+                if (keyword) {
+                  block = `${start}\n${keyword} #${issue.number}\n${end}`;
+                } else {
+                  core.warning(`Issue #${issue.number}: unsupported or missing Issue Type; closing keyword not added.`);
+                }
+              }
+              return {number: resolved.number, issue, block};
+            }
+
+            async function sync(pr, changedIssue = null) {
+              if (pr.state !== 'open') return;
+              if ((pr.head.repo?.full_name || '').toLowerCase() !== thisRepo) {
+                core.info(`PR #${pr.number}: fork PRs are not synchronized.`);
+                return;
+              }
+              let decision = await decide(pr);
+              if (changedIssue !== null && decision.number !== changedIssue) return;
+              const snapshotBody = normalize(pr.body);
+              if (!missingLabels(decision.issue, pr).length &&
+                  withManagedBlock(snapshotBody, decision.block) === snapshotBody) return;
+
+              const {data: latest} = await github.rest.pulls.get({owner, repo, pull_number: pr.number});
+              if (latest.state !== 'open') return;
+
+              if (latest.head.ref !== pr.head.ref ||
+                  userContent(latest.body).trimEnd() !== userContent(pr.body).trimEnd()) {
+                core.notice(`PR #${pr.number}: changed since the event; re-evaluating the latest state.`);
+                decision = await decide(latest);
+                if (changedIssue !== null && decision.number !== changedIssue) return;
+              }
+              const {issue, block} = decision;
+
+              const oldBody = normalize(latest.body);
+              const newBody = withManagedBlock(oldBody, block);
+              if (newBody !== oldBody) {
+                await github.rest.pulls.update({owner, repo, pull_number: pr.number, body: newBody});
+                core.info(`PR #${pr.number}: ${block ? `managed closing reference set for #${issue.number}` : 'managed closing reference removed'}`);
+              }
+              const missing = missingLabels(issue, latest);
+              if (missing.length) {
+                await github.rest.issues.addLabels({owner, repo, issue_number: pr.number, labels: missing});
+                core.info(`PR #${pr.number}: added ${missing.join(', ')}`);
+              }
+            }
+
+            if (context.eventName === 'pull_request') {
+              await sync(context.payload.pull_request);
+            } else if (context.eventName === 'workflow_dispatch') {
+              const number = Number(context.payload.inputs.pr_number);
+              const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number: number});
+              await sync(pr);
+            } else if (context.eventName === 'issues') {
+              const label = context.payload.label?.name;
+              if (context.payload.action === 'labeled' && !allowed.has(label)) {
+                core.info(`Label "${label}" is not synchronized.`);
+                return;
+              }
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: 'open', per_page: 100
+              });
+              const failed = [];
+              for (const pr of prs) {
+                try {
+                  await sync(pr, context.payload.issue.number);
+                } catch (error) {
+                  failed.push(pr.number);
+                  core.error(`PR #${pr.number}: ${error.message}`);
+                }
+              }
+              if (failed.length) core.setFailed(`Synchronization failed for PR #${failed.join(', #')}.`);
+            }
