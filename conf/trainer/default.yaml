@@ -1,6 +1,6 @@
 _target_: lightning.pytorch.Trainer
 
-max_epochs: 55
+max_epochs: 3
 accelerator: auto
 devices: auto
 num_sanity_val_steps: 0
@@ -22,6 +22,10 @@ callbacks:
     path: ${hydra:runtime.output_dir}/${now:%Y%m%d}_${dataset.name}_training_stats.csv
 
 logger:
-  - _target_: lightning.pytorch.loggers.CSVLogger
-    save_dir: ${hydra:runtime.output_dir}
-    name: lightning_logs
+  - _target_: lightning.pytorch.loggers.WandbLogger
+    project: "microbiomeGPT"            
+    entity: "sano-centre-for-computational-medicine-microbiome-gpt"
+    name: "run-${now:%Y-%m-%d_%H-%M-%S}"
+    save_dir: "${hydra:runtime.output_dir}"
+    log_model: false # don't send data to WB cloud anytime (even after sync)
+    offline: false # set true on VM that do not have acccess to internet or if you manually want to sync logs later
