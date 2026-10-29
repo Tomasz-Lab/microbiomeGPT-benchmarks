@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from sklearn.model_selection import train_test_split
 
+import gut_former.nmf.run_bicv as bicv
 from gut_former.nmf.nmf_core import NMF
 
 
@@ -106,3 +107,11 @@ def nmf_model(nmf_params):
 @pytest.fixture(scope="session")
 def fitted_nmf_model(synthetic_nmf, nmf_params):
     return NMF(**nmf_params).fit(synthetic_nmf.X)
+
+
+@pytest.fixture(scope="module")
+def bicv_folds(synthetic_nmf):
+    np.random.seed(0)
+    blocks = bicv.shuffle_and_split(synthetic_nmf.X)
+    matrices = bicv.rearrange_blocks(blocks)
+    return {idx: bicv.split_into_abcd(m) for idx, m in matrices.items()}

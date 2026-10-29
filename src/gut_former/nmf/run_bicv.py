@@ -3,12 +3,12 @@ import time
 from pathlib import Path
 
 import hydra
+import nmf
 import numpy as np
 import pandas as pd
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from gut_former.nmf.nmf_core import nmf
 from gut_former.utils.log_config import setup_logging
 from gut_former.utils.metrics import cos_sim, exp_var
 from gut_former.utils.metrics import l2norm as calc_l2norm
