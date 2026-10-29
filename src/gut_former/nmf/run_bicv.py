@@ -1,6 +1,5 @@
 import logging
 import time
-from itertools import product
 from pathlib import Path
 
 import hydra
@@ -9,6 +8,7 @@ import pandas as pd
 from hydra.core.hydra_config import HydraConfig
 from joblib import Parallel, delayed
 from omegaconf import DictConfig, OmegaConf
+from sklearn.model_selection import KFold
 
 from gut_former.nmf.nmf_core import NMF
 from gut_former.utils.log_config import setup_logging
@@ -23,80 +23,78 @@ def make_folds(M: np.ndarray, h: int = 3):
     """
     Yield h*h (A, B, C, D) tuples; each fold has a different block as A.
 
-    M is first thought of as an h x h grid of blocks (h=3 here). Blocks are
-    numbered row by row:
+    Rows (samples) and columns (pathways) are split independently into h
+    parts with KFold. M is thought of as an h x h grid of blocks, numbered
+    row by row (h=3 here):
 
-            +---+---+---+
-            | 1 | 2 | 3 |
-            +---+---+---+
-            | 4 | 5 | 6 |
-            +---+---+---+
-            | 7 | 8 | 9 |
-            +---+---+---+
+                  cols part 1   cols part 2   cols part 3
+                +-------------+-------------+-------------+
+        rows    |      1      |      2      |      3      |
+        part 1  |             |             |             |
+                +-------------+-------------+-------------+
+        rows    |      4      |      5      |      6      |
+        part 2  |             |             |             |
+                +-------------+-------------+-------------+
+        rows    |      7      |      8      |      9      |
+        part 3  |             |             |             |
+                +-------------+-------------+-------------+
 
-    Step 1: roll the matrix cyclically by whole blocks.
-        np.roll(M, (r * row_shift, c * column_shift), axis=(0, 1))
-        r = how many blocks to move rows down, c = how many blocks to move
-        columns right. Whatever falls off one edge re-enters on the other.
+    For every pair (row part i, column part j) one block is held out as A.
+    The row part i is the "test rows", the other parts are the "train rows";
+    the same for columns.
 
-        Example r=1, c=1:
+    Example: i=2, j=3  ->  A = block 6. Roles in the original grid:
 
-          original         rows down by 1     columns right by 1
-          +---+---+---+    +---+---+---+      +---+---+---+
-          | 1 | 2 | 3 |    | 7 | 8 | 9 |      | 9 | 7 | 8 |
-          +---+---+---+    +---+---+---+      +---+---+---+
-          | 4 | 5 | 6 | -> | 1 | 2 | 3 |  ->  | 3 | 1 | 2 |
-          +---+---+---+    +---+---+---+      +---+---+---+
-          | 7 | 8 | 9 |    | 4 | 5 | 6 |      | 6 | 4 | 5 |
-          +---+---+---+    +---+---+---+      +---+---+---+
+                    cols 1      cols 2      cols 3
+                +-----------+-----------+-----------+
+        rows 1  |  D (1)    |  D (2)    |  C (3)    |
+                +-----------+-----------+-----------+
+        rows 2  |  B (4)    |  B (5)    |  A (6)    |   <- test rows
+                +-----------+-----------+-----------+
+        rows 3  |  D (7)    |  D (8)    |  C (9)    |
+                +-----------+-----------+-----------+
+                 \_______ train cols ______/  test col
 
-        Whole block-rows and block-columns move together, so blocks that
-        shared samples (a row) or pathways (a column) still do.
+    The returned matrices are built by picking the rows/columns with
+    np.ix_, so non-adjacent blocks are glued together. Regrouped by role:
 
-    Step 2: all h*h pairs (r, c) give every block exactly one turn in the
-    top-left corner (A):
+                       train cols (1, 2)     test col (3)
+                     +---------------------+---------------+
+        test rows    |          B          |       A       |
+        (2)          |       [4 | 5]        |      [6]      |
+                     +---------------------+---------------+
+        train rows   |          D          |       C       |
+        (1, 3)       |    [1 | 2]           |     [3]       |
+                     |    [7 | 8]           |     [9]       |
+                     +---------------------+---------------+
 
-                    c=0    c=1    c=2
-            r=0     A=1    A=3    A=2
-            r=1     A=7    A=9    A=8
-            r=2     A=4    A=6    A=5
+        A - rows[test]   x cols[test]    held-out block (1/9 of M), never used for training
+        B - rows[test]   x cols[train]   same samples as A, other pathways (2/9)
+        C - rows[train]  x cols[test]    same pathways as A, other samples (2/9)
+        D - rows[train]  x cols[train]   the model is trained here (4/9)
 
-    Step 3: cut the rolled matrix after the first block-row and block-column.
-    Sizes are proportional (A is 1/3 x 1/3 of M, not a quarter):
+    All h*h pairs (i, j) are visited, so every block is A exactly once:
 
-              1 block   2 blocks
-            +---------+--------------------+
-            |    A    |         B          |  1 block
-            +---------+--------------------+
-            |         |                    |
-            |    C    |         D          |  2 blocks
-            |         |                    |
-            +---------+--------------------+
+        fold    1  2  3  4  5  6  7  8  9
+        A =     1  2  3  4  5  6  7  8  9
 
-        A - held-out block (1/9 of M), never used for training
-        B - same samples as A, other pathways (2/9)
-        C - same pathways as A, other samples (2/9)
-        D - the rest (4/9); the model is trained here
-
-        For the r=1, c=1 example above: A=9, B=[7 8], C=[3 / 6], D=[1 2 / 4 5].
+    A, B, C and D never overlap, so D never contains A. If the shape is not
+    divisible by h, KFold makes the parts differ by at most one row/column.
+    The data is expected to be shuffled beforehand (done in run_bicv_task),
+    so KFold is used without shuffling.
     """
     rows, cols = M.shape
+    row_splits = list(KFold(n_splits=h).split(np.arange(rows)))  # (train_idx, test_idx)
+    col_splits = list(KFold(n_splits=h).split(np.arange(cols)))
 
-    for r, c in product(range(h), repeat=2):
-        r_shift = r * rows // h
-        c_shift = c * cols // h
+    for row_train, row_test in row_splits:
+        for col_train, col_test in col_splits:
+            A = M[np.ix_(row_test, col_test)]
+            B = M[np.ix_(row_test, col_train)]
+            C = M[np.ix_(row_train, col_test)]
+            D = M[np.ix_(row_train, col_train)]
 
-        r_size = ((r + 1) * rows // h) - r_shift
-        c_size = ((c + 1) * cols // h) - c_shift
-
-        R = np.roll(M, (r_shift, c_shift), axis=(0, 1))
-
-        A = R[:r_size, :c_size]
-        B = R[:r_size, c_size:]
-        C = R[r_size:, :c_size]
-        D = R[r_size:, c_size:]
-
-        yield A, B, C, D
+            yield A, B, C, D
 
 
 def shuffle_rows_and_cols(X: np.ndarray, rng: np.random.Generator) -> np.ndarray:
