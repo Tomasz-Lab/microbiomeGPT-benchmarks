@@ -4,7 +4,7 @@ _partial_: true
 name: gut_former_inference
 
 batch_size: 16
-learning_rate: 1.893292917167e-4
-epochs: 55
+accelerator: auto
+# Lightning .ckpt, or a legacy .pt state_dict (model is then rebuilt from cfg.model and the data)
 checkpoint_path: # ${oc.env:PROJECT_ROOT}/output/checkpoint_sample.pt
 verbose: true

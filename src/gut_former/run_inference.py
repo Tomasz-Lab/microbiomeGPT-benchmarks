@@ -2,20 +2,29 @@ import logging
 from pathlib import Path
 
 import hydra
+import lightning.pytorch as L
 import pandas as pd
 import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
+from gut_former.datamodule import BacteriaDataModule
+from gut_former.lit_module import (
+    GutFormerModule,
+    is_lightning_checkpoint,
+    load_model_state_dict,
+    load_module,
+    resolve_accelerator,
+    verify_checkpoint_features,
+)
 from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path
 
 log = logging.getLogger(__name__)
 
 
 def run_inference(cfg: DictConfig, **_):
     # Setting up project
-    setup_logging()
+    setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
     log.info("Starting inference script..\n ")
 
@@ -28,61 +37,58 @@ def run_inference(cfg: DictConfig, **_):
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Loading & Preparing Data
-    data_path = find_data_path()
-    t_df = (
-        pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
-        .fillna(0)
-        .sort_index()
-        * cfg.dataset.taxa_multiplier
+    datamodule = BacteriaDataModule(
+        name=cfg.dataset.name,
+        taxa_multiplier=cfg.dataset.taxa_multiplier,
+        pathways_multiplier=cfg.dataset.pathways_multiplier,
+        batch_size=cfg.task.batch_size,
     )
-    p_df = (
-        pd.read_csv(f"{data_path}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
-        .fillna(0)
-        .sort_index()
-        * cfg.dataset.pathways_multiplier
-    )
-
-    t_tensor = torch.tensor(t_df.values, dtype=torch.float32).unsqueeze(-1)
-    p_tensor = torch.tensor(p_df.values, dtype=torch.float32).unsqueeze(-1)
+    datamodule.setup("predict")
 
     # Recreating Model
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model_builder = hydra.utils.instantiate(
-        cfg.model,
-    )
-
-    model = model_builder(
-        num_pathways=p_df.shape[1],
-        num_bacteria=t_df.shape[1],
-    ).to(DEVICE)
-
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
-    checkpoint_dict = torch.load(cfg.task.checkpoint_path, weights_only=True, map_location=DEVICE)
-    model.load_state_dict(checkpoint_dict)
-    model.eval()
-    model.cpu()
+    verify_checkpoint_features(cfg.task.checkpoint_path, datamodule.feature_names)
+    if is_lightning_checkpoint(cfg.task.checkpoint_path):
+        module = load_module(cfg.task.checkpoint_path)
+    else:
+        log.warning(
+            "Legacy checkpoint: rebuilding the model from cfg.model and the inference data."
+        )
+        model = hydra.utils.instantiate(cfg.model)(
+            num_pathways=datamodule.num_pathways,
+            num_bacteria=datamodule.num_bacteria,
+        )
+        model.load_state_dict(load_model_state_dict(cfg.task.checkpoint_path))
+        module = GutFormerModule(model)
 
     # Inference
-    t_pred, p_pred, latent = model(p_tensor, t_tensor)
+    trainer = L.Trainer(
+        accelerator=resolve_accelerator(cfg.task.accelerator),
+        devices=1,
+        logger=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
+    batches = trainer.predict(module, datamodule=datamodule)
+    if not batches:
+        raise RuntimeError("Prediction returned no batches; is the inference dataset empty?")
+    preds = {key: torch.cat([batch[key] for batch in batches]).cpu().numpy() for key in batches[0]}
 
     # Storing outputs
-    t_pred_df = pd.DataFrame(
-        t_pred.detach().cpu().numpy().squeeze(-1), index=t_df.index, columns=t_df.columns
-    )
+    t_df, p_df = datamodule.taxonomy, datamodule.pathways
+
+    t_pred_df = pd.DataFrame(preds["taxonomy"], index=t_df.index, columns=t_df.columns)
     t_pred_df.index.name = t_df.index.name
     t_output_path = f"{output_path}/pred_taxonomy_{cfg.dataset.name}.csv"
     t_pred_df.to_csv(t_output_path, index=True)
 
-    p_pred_df = pd.DataFrame(
-        p_pred.detach().cpu().numpy().squeeze(-1), index=p_df.index, columns=p_df.columns
-    )
+    p_pred_df = pd.DataFrame(preds["pathways"], index=p_df.index, columns=p_df.columns)
     p_pred_df.index.name = p_df.index.name
     p_output_path = f"{output_path}/pred_pathways_{cfg.dataset.name}.csv"
     p_pred_df.to_csv(p_output_path, index=True)
 
-    latent_cols = [f"z{i}" for i in range(cfg.model.latent_size)]
-    latent_df = pd.DataFrame(latent.detach().cpu().numpy(), index=p_df.index, columns=latent_cols)
+    latent_cols = [f"z{i}" for i in range(preds["latent"].shape[1])]
+    latent_df = pd.DataFrame(preds["latent"], index=p_df.index, columns=latent_cols)
     latent_df.index.name = t_df.index.name
     latent_output_path = f"{output_path}/latent_{cfg.dataset.name}.csv"
     latent_df.to_csv(latent_output_path, index=True)
