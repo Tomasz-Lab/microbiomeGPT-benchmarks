@@ -1,0 +1,27 @@
+_target_: lightning.pytorch.Trainer
+
+max_epochs: 55
+accelerator: auto
+devices: auto
+num_sanity_val_steps: 0
+log_every_n_steps: 1
+enable_progress_bar: true
+default_root_dir: ${hydra:runtime.output_dir}
+
+callbacks:
+  - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: ${hydra:runtime.output_dir}/checkpoints
+    filename: "{epoch:03d}-{val_loss:.4f}"
+    monitor: val_loss
+    mode: min
+    save_top_k: 1
+    save_last: true
+    # Save after EpochStatsWriter has recorded the epoch, so its history in the checkpoint is complete
+    save_on_train_epoch_end: true
+  - _target_: gut_former.callbacks.EpochStatsWriter
+    path: ${hydra:runtime.output_dir}/${now:%Y%m%d}_${dataset.name}_training_stats.csv
+
+logger:
+  - _target_: lightning.pytorch.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: lightning_logs

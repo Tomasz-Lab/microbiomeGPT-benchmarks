@@ -4,8 +4,11 @@ _partial_: true
 name: gut_former_training
 
 batch_size: 16
-epochs: 55
-checkpoint_path: null
+seed: 0
+# Lightning .ckpt to resume from (restores optimizer state and epoch)
+resume_from: null
+# Model weights (legacy .pt state_dict) to start from; optimizer starts fresh
+init_weights: null
 verbose: true
 
 optimizer:

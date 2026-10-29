@@ -4,6 +4,7 @@ defaults:
   - /task: run_gut_former_training
   - /model: gut_former
   - /dataset: csv
+  - /trainer: default
   - _self_
 
 experiment:
