@@ -21,23 +21,37 @@ def test_every_cell_is_held_out_exactly_once(bicv_folds, synthetic_nmf):
     np.testing.assert_array_equal(np.sort(held_out), np.sort(synthetic_nmf.X.ravel()))
 
 
-def test_run_cv_never_passes_heldout_block_to_nmf(bicv_folds, monkeypatch, tmp_path):
+def test_evaluate_signature_keeps_heldout_block_out_of_nmf(bicv_folds, monkeypatch, nmf_params):
     A, B, C, D = bicv_folds[1]
 
-    nmf_inputs = []
+    fitted_inputs = []
+    fitted_bases = []
+    transformed_inputs = []
+    fixed_bases = []
 
-    def fake_nmf(X, n_components, **kwargs):
-        X = np.asarray(X)
-        nmf_inputs.append(X.copy())
-        H = kwargs.get("H")
-        if H is None:
-            H = np.ones((n_components, X.shape[1]))
-        W = np.ones((X.shape[0], n_components))
-        return W, H, 0
+    real_fit = bicv.NMF.fit
+    real_transform = bicv.NMF.transform
 
-    monkeypatch.setattr(bicv, "nmf", fake_nmf, raising=False)
-    bicv.run_cv({1: (A, B, C, D)}, signatures=[3], outdir=tmp_path, n_runs=1)
+    def fit_spy(model, X, *args, **kwargs):
+        fitted_inputs.append(np.array(X, copy=True))
+        fitted_model = real_fit(model, X, *args, **kwargs)
+        fitted_bases.append(fitted_model.W_train_.T.copy())
+        return fitted_model
 
-    assert len(nmf_inputs) == 3
-    for actual, expected in zip(nmf_inputs, (D, B, C.T), strict=True):
-        np.testing.assert_array_equal(actual, expected)
+    def transform_spy(model, X, H=None):
+        transformed_inputs.append(np.array(X, copy=True))
+        fixed_bases.append(None if H is None else np.array(H, copy=True))
+        return real_transform(model, X, H=H)
+
+    monkeypatch.setattr(bicv.NMF, "fit", fit_spy)
+    monkeypatch.setattr(bicv.NMF, "transform", transform_spy)
+    params = {**nmf_params, "n_runs": 1, "max_iter": 500}
+    bicv.evaluate_signature(A, B, C, D, params=params, signature=3)
+
+    assert len(fitted_inputs) == 1
+    np.testing.assert_array_equal(fitted_inputs[0], D)
+    assert len(transformed_inputs) == 2
+    np.testing.assert_array_equal(transformed_inputs[0], B)
+    np.testing.assert_array_equal(transformed_inputs[1], C.T)
+    assert fixed_bases[0] is None
+    np.testing.assert_array_equal(fixed_bases[1], fitted_bases[0])

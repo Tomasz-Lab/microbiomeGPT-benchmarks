@@ -111,7 +111,6 @@ def fitted_nmf_model(synthetic_nmf, nmf_params):
 
 @pytest.fixture(scope="module")
 def bicv_folds(synthetic_nmf):
-    np.random.seed(0)
-    blocks = bicv.shuffle_and_split(synthetic_nmf.X)
-    matrices = bicv.rearrange_blocks(blocks)
-    return {idx: bicv.split_into_abcd(m) for idx, m in matrices.items()}
+    rng = np.random.default_rng(seed=0)
+    matrix = bicv.shuffle_rows_and_cols(synthetic_nmf.X, rng)
+    return {idx: fold for idx, fold in enumerate(bicv.make_folds(matrix, h=3), start=1)}
