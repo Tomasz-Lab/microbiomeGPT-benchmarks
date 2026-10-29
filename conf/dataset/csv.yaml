@@ -1,6 +1,6 @@
 _target_: gut_former.nmf.run_nmf.load_data_nmf_csv
 
-dir: ${oc.env:DATASET_DIR,.}/data
+dir: ${oc.env:DATASET_DIR,.}
 kind: pathways
 name: sample
 subset: all

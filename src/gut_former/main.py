@@ -1,7 +1,10 @@
 import hydra
+from dotenv import load_dotenv
 from omegaconf import DictConfig
 
 from settings.hydra import CONFIG_NAME, CONFIG_PATH, VERSION_BASE
+
+load_dotenv()
 
 
 @hydra.main(version_base=VERSION_BASE, config_path=CONFIG_PATH, config_name=CONFIG_NAME)

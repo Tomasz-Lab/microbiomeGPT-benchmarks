@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import hydra
@@ -8,7 +9,6 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def run_inference(cfg: DictConfig, **_):
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Loading & Preparing Data
-    data_path = find_data_path()
+    data_path = os.environ["DATASET_DIR"]
     t_df = (
         pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
