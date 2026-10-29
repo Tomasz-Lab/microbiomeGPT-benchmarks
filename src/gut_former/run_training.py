@@ -64,6 +64,14 @@ def run_training(cfg: DictConfig, **_):
     trainer = hydra.utils.instantiate(
         cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
     )
+
+    config_dict = OmegaConf.to_container(cfg, resolve=True)
+    if trainer.loggers:
+        for item in trainer.loggers:
+            item.log_hyperparams(config_dict)
+    elif trainer.logger:
+        trainer.logger.log_hyperparams(config_dict)
+
     trainer.fit(module, datamodule=datamodule, ckpt_path=cfg.task.resume_from)
 
     checkpoint_callback = trainer.checkpoint_callback
