@@ -5,13 +5,29 @@ from gut_former.utils.metrics import cos_sim, exp_var
 log = logging.getLogger(__name__)
 
 
-def test_nmf_reconstructs_X(fitted_nmf_model, synthetic_nmf):
+def test_nmf_reconstructs_X(nmf_model, synthetic_nmf):
     X = synthetic_nmf.X
-    X_pred = fitted_nmf_model.W_train_ @ fitted_nmf_model.H_
+    model = nmf_model.fit(X)
+    X_pred = model.W_train_ @ model.H_
 
-    ev = exp_var(X, X_pred)
-    cs = cos_sim(X, X_pred)
-    log.debug("exp_var=%.4f cos_sim=%.4f", ev, cs)
+    exp_var_score = exp_var(X, X_pred)
+    cos_sim_val_score = cos_sim(X, X_pred)
+    log.debug(f"exp_var={exp_var_score} cos_sim={cos_sim_val_score}")
 
-    assert ev > 0.99
-    assert cs > 0.99
+    assert exp_var_score > 0.99
+    assert cos_sim_val_score > 0.99
+
+
+def test_transform_on_unseen_samples(nmf_model, synthetic_split):
+    model = nmf_model.fit(synthetic_split.X_train)
+    res = model.evaluate(synthetic_split.X_val)
+
+    exp_var_score = res["exp_var_val"]
+    cos_sim_val_score = res["cos_sim_val"]
+
+    log.debug(f"exp_var={exp_var_score} cos_sim={cos_sim_val_score}")
+
+    assert res["W_val"].shape == (len(synthetic_split.X_val), synthetic_split.k)
+    assert (res["W_val"] >= 0).all()
+    assert res["exp_var_val"] > 0.98
+    assert res["cos_sim_val"] > 0.98
