@@ -1,4 +1,9 @@
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def find_project_root(marker: str = "pyproject.toml") -> Path:
@@ -14,3 +19,14 @@ def find_project_root(marker: str = "pyproject.toml") -> Path:
 
 
 PROJECT_ROOT = find_project_root()
+
+DATASET_DIR = (
+    Path(
+        os.environ.get(
+            "DATASET_DIR",
+            str(PROJECT_ROOT / "data"),
+        )
+    )
+    .expanduser()
+    .resolve()
+)

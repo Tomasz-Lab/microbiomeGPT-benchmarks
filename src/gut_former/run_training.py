@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import date
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from torch.utils.data import DataLoader
 from gut_former.dataset import BacteriaDataset
 from gut_former.utils.data_prep import train_val_split
 from gut_former.utils.log_config import setup_logging
+from settings.paths import DATASET_DIR
 
 log = logging.getLogger(__name__)
 
@@ -33,10 +33,9 @@ def run_training(cfg: DictConfig, **_):
 
     # Loading & Preparing Data
     # To do: refactor later when we will be dealing with task for dataload refacotr
-    dataset_dir = os.environ["DATASET_DIR"]
     Xt_df = (
         pd.read_csv(
-            f"{dataset_dir}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
+            f"{DATASET_DIR}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
         )
         .fillna(0)
         .sort_index()
@@ -44,7 +43,7 @@ def run_training(cfg: DictConfig, **_):
     )
     Xp_df = (
         pd.read_csv(
-            f"{dataset_dir}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
+            f"{DATASET_DIR}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
         )
         .fillna(0)
         .sort_index()
