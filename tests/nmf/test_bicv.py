@@ -26,6 +26,26 @@ def test_every_cell_is_held_out_exactly_once(cell_id_matrix):
     np.testing.assert_array_equal(seen, np.ones_like(X))
 
 
+def test_B_shares_A_rows_and_C_shares_A_columns(cell_id_matrix):
+    X = cell_id_matrix
+    n_cols = X.shape[1]
+
+    # map each value to coresonding column or row
+    original_row_by_cell = np.repeat(np.arange(X.shape[0]), n_cols)
+    original_column_by_cell = np.tile(np.arange(n_cols), X.shape[0])
+
+    for A, B, C, _ in bicv.make_folds(X, h=3):
+        # check to what rows values from A and B belongs
+        a_rows = original_row_by_cell[A[:, 0]]
+        b_rows = original_row_by_cell[B[:, 0]]
+        # check to what columns values from A and C belongs
+        a_columns = original_column_by_cell[A[0, :]]
+        c_columns = original_column_by_cell[C[0, :]]
+
+        np.testing.assert_array_equal(a_rows, b_rows)
+        np.testing.assert_array_equal(a_columns, c_columns)
+
+
 def test_evaluate_signature_keeps_heldout_block_out_of_nmf(bicv_folds, monkeypatch, nmf_params):
     A, B, C, D = bicv_folds[1]
 
