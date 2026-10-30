@@ -16,9 +16,14 @@ def test_each_fold_is_a_partition_of_X(bicv_folds, synthetic_nmf):
         np.testing.assert_array_equal(got, expected)
 
 
-def test_every_cell_is_held_out_exactly_once(bicv_folds, synthetic_nmf):
-    held_out = np.concatenate([A.ravel() for A, *_ in bicv_folds.values()])
-    np.testing.assert_array_equal(np.sort(held_out), np.sort(synthetic_nmf.X.ravel()))
+def test_every_cell_is_held_out_exactly_once(cell_id_matrix):
+    X = cell_id_matrix
+    seen = np.zeros_like(X)
+
+    for A, *_ in bicv.make_folds(X, h=3):
+        np.add.at(seen.ravel(), A.ravel(), 1)
+
+    np.testing.assert_array_equal(seen, np.ones_like(X))
 
 
 def test_evaluate_signature_keeps_heldout_block_out_of_nmf(bicv_folds, monkeypatch, nmf_params):

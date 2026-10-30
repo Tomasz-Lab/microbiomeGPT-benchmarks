@@ -71,6 +71,11 @@ def synthetic_nmf():
 
 
 @pytest.fixture(scope="session")
+def cell_id_matrix():
+    return np.arange(35).reshape(5, 7)
+
+
+@pytest.fixture(scope="session")
 def synthetic_split(synthetic_nmf):
     return split_synthetic_nmf(synthetic_nmf, val_fraction=0.2)
 
