@@ -13,7 +13,7 @@ from gut_former.utils.project_paths import find_data_path
 log = logging.getLogger(__name__)
 
 
-def run_inference(cfg: DictConfig, **_):
+def run_inference(cfg: DictConfig, **_: object) -> None:
     # Setting up project
     setup_logging()
 

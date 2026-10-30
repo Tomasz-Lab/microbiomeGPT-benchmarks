@@ -1,6 +1,8 @@
 import logging
 import time
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import hydra
 import numpy as np
@@ -19,7 +21,16 @@ from gut_former.utils.metrics import rss as calc_rss
 log = logging.getLogger(__name__)
 
 
-def make_folds(M: np.ndarray, h: int = 3):
+def make_folds(
+    M: np.ndarray[tuple[int, int], np.dtype[np.float64]], h: int = 3
+) -> Iterator[
+    tuple[
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    ]
+]:
     """
     Yield h*h (A, B, C, D) tuples; each fold has a different block as A.
 
@@ -97,12 +108,17 @@ def make_folds(M: np.ndarray, h: int = 3):
             yield A, B, C, D
 
 
-def shuffle_rows_and_cols(X: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+def shuffle_rows_and_cols(
+    X: np.ndarray[tuple[int, int], np.dtype[np.float64]], rng: np.random.Generator
+) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
     """Randomly permute rows (samples) and columns (pathways) independently."""
     return rng.permutation(rng.permutation(X, axis=0), axis=1)
 
 
-def score(true: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+def score(
+    true: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    pred: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+) -> dict[str, float]:
     return {
         "evar": exp_var(true, pred),
         "cos_sim": cos_sim(true, pred),
@@ -117,7 +133,14 @@ def summarize_block_a(df: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
-def evaluate_signature(A, B, C, D, params: dict, signature: int) -> list[dict]:
+def evaluate_signature(
+    A: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    B: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    C: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    D: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    params: Any,
+    signature: int,
+) -> list[dict[str, float | int | str]]:
     """
     Fit NMF on D, fold in W_a and H_a, and return one metrics row per block.
 
@@ -206,7 +229,7 @@ def evaluate_signature(A, B, C, D, params: dict, signature: int) -> list[dict]:
     ]
 
 
-def run_bicv_task(cfg: DictConfig, **_):
+def run_bicv_task(cfg: DictConfig, **_: object) -> None:
     setup_logging()
     log.info("Starting biCV script..")
 
@@ -222,7 +245,14 @@ def run_bicv_task(cfg: DictConfig, **_):
 
     M = shuffle_rows_and_cols(X.values, np.random.default_rng(seed=cfg.task.seed))
 
-    def process_task(fold_idx, A, B, C, D, signature):
+    def process_task(
+        fold_idx: int,
+        A: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        B: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        C: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        D: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        signature: int,
+    ) -> list[dict[str, float | int | str]]:
         rows = evaluate_signature(A, B, C, D, params, signature)
         return [{"fold": fold_idx, **row} for row in rows]
 
