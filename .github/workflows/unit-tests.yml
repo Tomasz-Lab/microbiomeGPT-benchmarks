@@ -12,15 +12,20 @@ permissions:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          python-version: ".python-version"
 
       - name: Install dependencies
         run: uv sync --locked
