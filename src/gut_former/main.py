@@ -6,7 +6,7 @@ load_dotenv()
 
 
 @hydra.main(version_base="1.3", config_path="../../conf", config_name="config")
-def main(cfg: DictConfig):
+def main(cfg: DictConfig) -> None:
     task_func = hydra.utils.instantiate(cfg.task)
     task_func(cfg)
 

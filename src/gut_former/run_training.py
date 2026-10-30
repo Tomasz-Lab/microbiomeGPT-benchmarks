@@ -18,7 +18,7 @@ from gut_former.utils.project_paths import find_data_path
 log = logging.getLogger(__name__)
 
 
-def run_training(cfg: DictConfig, **_):
+def run_training(cfg: DictConfig, **_: object) -> None:
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 

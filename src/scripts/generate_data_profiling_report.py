@@ -8,7 +8,7 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 
-def run_data_profiling_report(cfg: DictConfig, **_):
+def run_data_profiling_report(cfg: DictConfig, **_: object) -> None:
     df = pd.read_csv(cfg.task.path, low_memory=False)
     dropped_columns = []
 
