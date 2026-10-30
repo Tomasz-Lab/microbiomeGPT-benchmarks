@@ -76,16 +76,6 @@ def synthetic_split(synthetic_nmf):
 
 
 @pytest.fixture(scope="session")
-def nmf_data_factory():
-    return make_synthetic_nmf
-
-
-@pytest.fixture(scope="session")
-def split_factory():
-    return split_synthetic_nmf
-
-
-@pytest.fixture(scope="session")
 def nmf_params(synthetic_nmf):
     return dict(
         n_components=synthetic_nmf.k,
@@ -102,11 +92,6 @@ def nmf_params(synthetic_nmf):
 @pytest.fixture
 def nmf_model(nmf_params):
     return NMF(**nmf_params)
-
-
-@pytest.fixture(scope="session")
-def fitted_nmf_model(synthetic_nmf, nmf_params):
-    return NMF(**nmf_params).fit(synthetic_nmf.X)
 
 
 @pytest.fixture(scope="module")
