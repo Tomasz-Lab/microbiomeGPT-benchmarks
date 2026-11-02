@@ -26,7 +26,7 @@ def run_inference(cfg: DictConfig, **_):
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
-    log.info("Starting inference script..\n ")
+    log.info("Starting inference script..")
 
     if cfg.task.checkpoint_path is None:
         raise ValueError(
@@ -46,7 +46,7 @@ def run_inference(cfg: DictConfig, **_):
     datamodule.setup("predict")
 
     # Recreating Model
-    log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
+    log.info("Recreating model from checkpoint: %s", cfg.task.checkpoint_path)
     verify_checkpoint_features(cfg.task.checkpoint_path, datamodule.feature_names)
     if is_lightning_checkpoint(cfg.task.checkpoint_path):
         module = load_module(cfg.task.checkpoint_path)

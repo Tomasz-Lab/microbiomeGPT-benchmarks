@@ -20,7 +20,7 @@ def run_training(cfg: DictConfig, **_):
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
-    log.info("Starting training script..\n ")
+    log.info("Starting training script..")
 
     if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
         raise ValueError("Set either task.resume_from or task.init_weights, not both.")
@@ -68,7 +68,7 @@ def run_training(cfg: DictConfig, **_):
 
     checkpoint_callback = trainer.checkpoint_callback
     log.info(
-        "\nTraining completed.\nSaved checkpoints:\n  - Best: %s\n  - Last: %s\n",
+        "Training completed.\nSaved checkpoints:\n  - Best: %s\n  - Last: %s",
         checkpoint_callback.best_model_path if checkpoint_callback else None,
         checkpoint_callback.last_model_path if checkpoint_callback else None,
     )
