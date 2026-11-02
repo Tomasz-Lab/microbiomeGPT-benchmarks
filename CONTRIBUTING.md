@@ -36,3 +36,14 @@ make jupyter  # Launch Jupyter
 
 Select kernel "Python (gut-former)" in your notebook.
 
+
+## Configuration Management Principles
+
+- Hydra: Model parameters, training settings, and experiment-specific options belong in Hydra configs. Hydra supports configuration composition and CLI overrides. (Hydra documentation)
+
+- Environment variables  (Deployment-specific configuration): Values that may differ between local development, Docker, HPC, and cloud environments (e.g. dataset and output directories) should be configurable through environment variables. (The Twelve-Factor App — Config)
+
+- settings/ (defined via python code): Settings that normally do not vary between environments, such as Hydra's version_base and default config_name, belong in a centralized settings module. Settings can be imported and used directly in the code
+
+
+
