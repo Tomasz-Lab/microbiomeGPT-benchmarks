@@ -73,6 +73,8 @@ warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+exclude = "^tests/"
+disable_error_code = ["import-untyped"]  # Third-party libraries lack type stubs.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

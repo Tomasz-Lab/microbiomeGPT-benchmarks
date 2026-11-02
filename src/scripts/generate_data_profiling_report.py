@@ -1,6 +1,9 @@
 import re
 import sys
+from contextlib import redirect_stderr, redirect_stdout
+from io import TextIOBase
 from pathlib import Path
+from typing import TextIO
 
 import pandas as pd
 import sweetviz as sv
@@ -8,28 +11,33 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 
+class _TeeTextIO(TextIOBase):
+    def __init__(self, stream: TextIO, logs: list[str]) -> None:
+        self._stream = stream
+        self._logs = logs
+
+    def write(self, text: str) -> int:
+        self._logs.append(text)
+        return self._stream.write(text)
+
+    def flush(self) -> None:
+        self._stream.flush()
+
+
 def run_data_profiling_report(cfg: DictConfig, **_: object) -> None:
     df = pd.read_csv(cfg.task.path, low_memory=False)
     dropped_columns = []
 
-    logs = []
-    orig_stdout_write = sys.stdout.write
-    orig_stderr_write = sys.stderr.write
+    logs: list[str] = []
     while True:
-        # Stream live to console while capturing both stdout and stderr
-        sys.stdout.write = lambda s: (logs.append(s), orig_stdout_write(s))[1]
-        sys.stderr.write = lambda s: (logs.append(s), orig_stderr_write(s))[1]
-
         try:
-            report = sv.analyze(df)
-            sys.stdout.write = orig_stdout_write
-            sys.stderr.write = orig_stderr_write
+            with (
+                redirect_stdout(_TeeTextIO(sys.stdout, logs)),
+                redirect_stderr(_TeeTextIO(sys.stderr, logs)),
+            ):
+                report = sv.analyze(df)
             break  # if there is no errors - break loop
         except ValueError as e:
-            # Restore standard streams immediately so all logs are flushed
-            sys.stdout.write = orig_stdout_write
-            sys.stderr.write = orig_stderr_write
-
             full_log = "".join(logs)
             matches = re.findall(r"Feature:\s*([^\s|]+)", full_log)
 
