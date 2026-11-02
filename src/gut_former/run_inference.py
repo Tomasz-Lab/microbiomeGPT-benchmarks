@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 
 import hydra
-import lightning.pytorch as L
 import pandas as pd
 import torch
 from hydra.core.hydra_config import HydraConfig
@@ -62,12 +61,8 @@ def run_inference(cfg: DictConfig, **_):
         module = GutFormerModule(model)
 
     # Inference
-    trainer = L.Trainer(
-        accelerator=resolve_accelerator(cfg.task.accelerator),
-        devices=1,
-        logger=False,
-        enable_progress_bar=False,
-        enable_model_summary=False,
+    trainer = hydra.utils.instantiate(
+        cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
     )
     batches = trainer.predict(module, datamodule=datamodule)
     if not batches:

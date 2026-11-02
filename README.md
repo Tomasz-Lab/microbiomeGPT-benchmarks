@@ -130,8 +130,8 @@ Training settings are supplied as Hydra overrides:
 
 Outputs in the Hydra run directory:
 
-- `{date}_{dataset}_training_stats.csv` — per-epoch metrics (same columns as before; `test_*`
-  columns hold the held-out validation split)
+- `{date}_{dataset}_training_stats.csv` — one row per epoch with every metric the model logs
+  (`train_*` and `val_*`; the legacy scripts name the validation columns `test_*`)
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
 - `lightning_logs/` — Lightning's CSV logs and hyperparameters
 
@@ -178,6 +178,9 @@ uv run python src/gut_former/main.py \
 A Lightning checkpoint stores the model shape and feature names, so inference fails early if the
 dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
 rebuilt from `model.*` and the dataset, without that check.
+
+The inference trainer comes from `conf/trainer/inference.yaml`; override it the same way, e.g.
+`trainer.accelerator=cpu`.
 
 Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
 `pred_pathways_{dataset}.csv`) are saved in the Hydra run directory.

@@ -1,0 +1,9 @@
+_target_: lightning.pytorch.Trainer
+
+accelerator: auto
+# Keep a single device: with several, trainer.predict returns only this rank's batches
+devices: 1
+logger: false
+enable_progress_bar: false
+enable_model_summary: false
+default_root_dir: ${hydra:runtime.output_dir}
