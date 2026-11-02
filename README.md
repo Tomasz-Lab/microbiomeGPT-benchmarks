@@ -47,6 +47,10 @@ Execute commands or scripts directly within the project's environment without ma
 source .venv/bin/activate
 ```
 
+### 🧪 Tests
+
+Run all tests with `uv run pytest`, or a specific test file with `uv run pytest tests/nmf/test_bicv.py`.
+
 ## 📂 Data
 
 Place input files in the `data/` directory:
