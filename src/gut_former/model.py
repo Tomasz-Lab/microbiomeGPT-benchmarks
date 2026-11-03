@@ -1,8 +1,24 @@
 import torch
 from torch import nn
 
+from gut_former.schema import DataSchema
+
 
 class BacteriaModel(nn.Module):
+    REQUIRED_MODALITIES = ("taxonomy", "pathways")
+
+    @classmethod
+    def from_schema(cls, data_schema: DataSchema, **architecture) -> "BacteriaModel":
+        """Build the model with input sizes taken from the data schema."""
+        missing = set(cls.REQUIRED_MODALITIES) - data_schema.feature_names.keys()
+        if missing:
+            raise ValueError(f"BacteriaModel requires modalities: {sorted(missing)}")
+        return cls(
+            num_pathways=len(data_schema.feature_names["pathways"]),
+            num_bacteria=len(data_schema.feature_names["taxonomy"]),
+            **architecture,
+        )
+
     def __init__(self, num_pathways, num_bacteria, embedding_dim, latent_size, **_):
         super().__init__()
 

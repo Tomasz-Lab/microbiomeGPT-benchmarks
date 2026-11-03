@@ -7,13 +7,15 @@ import torch
 from torch import nn
 from torch.nn.functional import mse_loss
 
+from gut_former.schema import DataSchema
+
 log = logging.getLogger(__name__)
 
 
 class AutoEncoderModule(L.LightningModule):
     """Training, validation and prediction steps for a taxonomy/pathways autoencoder.
 
-    `model_config` and `model_kwargs` are stored in the checkpoint so `load_module` can rebuild
+    `model_config` and `data_schema` are stored in the checkpoint so `load_module` can rebuild
     the network without the original data or Hydra config.
     """
 
@@ -23,8 +25,7 @@ class AutoEncoderModule(L.LightningModule):
         loss_fn: nn.Module | None = None,
         optimizer=None,
         model_config: dict | None = None,
-        model_kwargs: dict | None = None,
-        feature_names: dict[str, list[str]] | None = None,
+        data_schema: dict[str, list[str]] | None = None,
     ):
         super().__init__()
         self.model = model
@@ -89,27 +90,30 @@ def is_lightning_checkpoint(path: str | Path) -> bool:
     return "hyper_parameters" in checkpoint
 
 
-def check_feature_names(expected: dict[str, list[str]], actual: dict[str, list[str]]):
-    for kind, names in expected.items():
-        if actual[kind] != names:
+def check_schema(expected: DataSchema, actual: DataSchema):
+    for modality, names in expected.feature_names.items():
+        actual_names = actual.feature_names.get(modality)
+        if actual_names is None:
+            raise ValueError(f"The data has no {modality} features, but the checkpoint needs them.")
+        if actual_names != names:
             raise ValueError(
-                f"{kind} features differ from the checkpoint: expected {len(names)} columns, "
-                f"got {len(actual[kind])} (names or order do not match)."
+                f"{modality} features differ from the checkpoint: expected {len(names)} columns, "
+                f"got {len(actual_names)} (names or order do not match)."
             )
 
 
-def verify_checkpoint_features(path: str | Path, feature_names: dict[str, list[str]]):
+def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     """Fail if the data columns differ from those the checkpoint was trained on."""
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    expected = checkpoint.get("hyper_parameters", {}).get("feature_names")
+    expected = checkpoint.get("hyper_parameters", {}).get("data_schema")
     if expected is None:
         log.warning(
-            "Checkpoint %s has no feature names (legacy format); "
+            "Checkpoint %s has no data schema (legacy format); "
             "feature names and order cannot be verified.",
             path,
         )
         return
-    check_feature_names(expected, feature_names)
+    check_schema(DataSchema.from_dict(expected), data_schema)
 
 
 def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
@@ -128,10 +132,10 @@ def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
 def load_module(
     path: str | Path, loss_fn: nn.Module | None = None, map_location="cpu"
 ) -> AutoEncoderModule:
-    """Rebuild the network from the shape stored in a Lightning checkpoint and load its weights."""
+    """Rebuild the network from the schema stored in a Lightning checkpoint and load its weights."""
     hparams = torch.load(path, map_location=map_location, weights_only=True)["hyper_parameters"]
     model_builder = hydra.utils.instantiate(hparams["model_config"])
-    model = model_builder(**hparams["model_kwargs"])
+    model = model_builder(data_schema=DataSchema.from_dict(hparams["data_schema"]))
     return AutoEncoderModule.load_from_checkpoint(
         path, model=model, loss_fn=loss_fn, map_location=map_location
     )

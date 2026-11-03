@@ -82,8 +82,8 @@ The default experiment is `nmf_pathways`. Available experiments are:
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups (training also composes
-`trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
+Experiments compose the `task`, `model`, and `dataset` config groups (the GUT-FORMer experiments
+also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
@@ -99,9 +99,13 @@ configuration/log files under
 ## 🧠 Model
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
-`GutFormerModule` (`src/gut_former/lit_module.py`) holds the training, validation and prediction
+`AutoEncoderModule` (`src/gut_former/lit_module.py`) holds the training, validation and prediction
 steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
 can be used directly from notebooks or HPC scripts without Hydra.
+
+After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.py`) with the
+feature names of each modality. The model reads its input sizes from the schema
+(`BacteriaModel.from_schema`), so the runners don't pass data dimensions to the model.
 
 ### Train from scratch
 
@@ -120,7 +124,8 @@ Training settings are supplied as Hydra overrides:
 | `trainer.max_epochs` | `55` | Number of training epochs |
 | `trainer.accelerator` | `auto` | `auto` (CUDA if available, else CPU), `cpu`, `cuda`/`gpu` |
 | `trainer.devices` | `auto` | Number of devices |
-| `task.batch_size` | `16` | Batch size |
+| `datamodule.batch_size` | `16` | Batch size |
+| `datamodule.val_size` | `0.1` | Fraction of samples held out for validation |
 | `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
 | `task.seed` | `0` | Random seed |
 | `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
@@ -175,8 +180,8 @@ uv run python src/gut_former/main.py \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
 
-A Lightning checkpoint stores the model shape and feature names, so inference fails early if the
-dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
+A Lightning checkpoint stores the data schema (feature names per modality), so inference fails
+early if the dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
 rebuilt from `model.*` and the dataset, without that check.
 
 The inference trainer comes from `conf/trainer/inference.yaml`; override it the same way, e.g.

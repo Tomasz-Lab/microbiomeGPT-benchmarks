@@ -7,14 +7,13 @@ import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from gut_former.datamodule import BacteriaDataModule
 from gut_former.lit_module import (
     AutoEncoderModule,
     is_lightning_checkpoint,
     load_model_state_dict,
     load_module,
     resolve_accelerator,
-    verify_checkpoint_features,
+    verify_checkpoint_schema,
 )
 from gut_former.utils.log_config import setup_logging
 
@@ -36,27 +35,20 @@ def run_inference(cfg: DictConfig, **_):
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Loading & Preparing Data
-    datamodule = BacteriaDataModule(
-        name=cfg.dataset.name,
-        taxa_multiplier=cfg.dataset.taxa_multiplier,
-        pathways_multiplier=cfg.dataset.pathways_multiplier,
-        batch_size=cfg.task.batch_size,
-    )
+    datamodule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup("predict")
+    data_schema = datamodule.data_schema()
 
     # Recreating Model
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
-    verify_checkpoint_features(cfg.task.checkpoint_path, datamodule.feature_names)
+    verify_checkpoint_schema(cfg.task.checkpoint_path, data_schema)
     if is_lightning_checkpoint(cfg.task.checkpoint_path):
         module = load_module(cfg.task.checkpoint_path)
     else:
         log.warning(
             "Legacy checkpoint: rebuilding the model from cfg.model and the inference data."
         )
-        model = hydra.utils.instantiate(cfg.model)(
-            num_pathways=datamodule.num_pathways,
-            num_bacteria=datamodule.num_bacteria,
-        )
+        model = hydra.utils.instantiate(cfg.model)(data_schema=data_schema)
         model.load_state_dict(load_model_state_dict(cfg.task.checkpoint_path))
         module = AutoEncoderModule(model)
 

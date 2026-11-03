@@ -1,4 +1,4 @@
-_target_: gut_former.model.BacteriaModel
+_target_: gut_former.model.BacteriaModel.from_schema
 _partial_: true
 
 model_version: v1-0-0

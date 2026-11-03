@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
+from gut_former.schema import DataSchema
 from gut_former.utils.project_paths import find_data_path
 
 
@@ -90,20 +91,13 @@ class BacteriaDataModule(L.LightningDataModule):
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
 
-    @property
-    def num_bacteria(self) -> int:
-        return int(self.taxonomy.shape[1])
-
-    @property
-    def num_pathways(self) -> int:
-        return int(self.pathways.shape[1])
-
-    @property
-    def feature_names(self) -> dict[str, list[str]]:
-        return {
-            "taxonomy": self.taxonomy.columns.tolist(),
-            "pathways": self.pathways.columns.tolist(),
-        }
+    def data_schema(self) -> DataSchema:
+        return DataSchema(
+            {
+                "taxonomy": tuple(self.taxonomy.columns),
+                "pathways": tuple(self.pathways.columns),
+            }
+        )
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
