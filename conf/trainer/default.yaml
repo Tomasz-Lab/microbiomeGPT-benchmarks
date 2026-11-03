@@ -9,6 +9,7 @@ enable_progress_bar: true
 default_root_dir: ${hydra:runtime.output_dir}
 
 callbacks:
+  - _target_: gut_former.callbacks.RunLogger
   - _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: ${hydra:runtime.output_dir}/checkpoints
     filename: "{epoch:03d}-{val_loss:.4f}"

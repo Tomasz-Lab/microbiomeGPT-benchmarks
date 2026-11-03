@@ -9,6 +9,61 @@ from lightning.pytorch.callbacks import BasePredictionWriter
 log = logging.getLogger(__name__)
 
 
+def _device_summary(trainer) -> str:
+    accelerator = type(trainer.accelerator).__name__.removesuffix("Accelerator")
+    return f"{accelerator}, {trainer.num_devices} device(s)"
+
+
+def _num_samples(dataloaders) -> int:
+    if dataloaders is None:
+        return 0
+    if not isinstance(dataloaders, list | tuple):
+        dataloaders = [dataloaders]
+    return sum(len(dataloader.dataset) for dataloader in dataloaders)
+
+
+class RunLogger(L.Callback):
+    """Log the start and end of training and inference runs."""
+
+    def on_train_start(self, trainer, pl_module):
+        if not trainer.is_global_zero:
+            return
+        resumed = f", resuming at epoch {trainer.current_epoch}" if trainer.current_epoch else ""
+        log.info(
+            "Training started: %d epochs on %s%s; %d train / %d validation samples",
+            trainer.max_epochs,
+            _device_summary(trainer),
+            resumed,
+            _num_samples(trainer.train_dataloader),
+            _num_samples(trainer.val_dataloaders),
+        )
+
+    def on_train_end(self, trainer, pl_module):
+        if not trainer.is_global_zero:
+            return
+        checkpoint_callback = trainer.checkpoint_callback
+        if checkpoint_callback is None:
+            log.info("Training completed (no checkpoint callback configured).")
+            return
+        log.info(
+            "Training completed.\nSaved checkpoints:\n  - Best: %s\n  - Last: %s",
+            checkpoint_callback.best_model_path,
+            checkpoint_callback.last_model_path,
+        )
+
+    def on_predict_start(self, trainer, pl_module):
+        if trainer.is_global_zero:
+            log.info(
+                "Inference started: %d samples on %s",
+                _num_samples(trainer.predict_dataloaders),
+                _device_summary(trainer),
+            )
+
+    def on_predict_end(self, trainer, pl_module):
+        if trainer.is_global_zero:
+            log.info("Inference completed.")
+
+
 class EpochStatsWriter(L.Callback):
     """Write one row of the logged epoch-level metrics per epoch, rewriting the CSV each epoch.
 

@@ -21,8 +21,6 @@ def run_inference(cfg: DictConfig, **_):
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
-    log.info("Starting inference script..\n ")
-
     if cfg.task.checkpoint_path is None:
         raise ValueError(
             "Inference requires a trained model checkpoint; set checkpoint_path in config."
@@ -57,4 +55,3 @@ def run_inference(cfg: DictConfig, **_):
 
     # Outputs are written by the PredictionWriter callback (conf/trainer/inference.yaml)
     trainer.predict(module, datamodule=datamodule, return_predictions=False)
-    log.info("Inference completed.")

@@ -19,8 +19,6 @@ def run_training(cfg: DictConfig, **_):
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
-    log.info("Starting training script..\n ")
-
     if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
         raise ValueError("Set either task.resume_from or task.init_weights, not both.")
 
@@ -55,10 +53,3 @@ def run_training(cfg: DictConfig, **_):
         cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
     )
     trainer.fit(module, datamodule=datamodule, ckpt_path=cfg.task.resume_from)
-
-    checkpoint_callback = trainer.checkpoint_callback
-    log.info(
-        "\nTraining completed.\nSaved checkpoints:\n  - Best: %s\n  - Last: %s\n",
-        checkpoint_callback.best_model_path if checkpoint_callback else None,
-        checkpoint_callback.last_model_path if checkpoint_callback else None,
-    )
