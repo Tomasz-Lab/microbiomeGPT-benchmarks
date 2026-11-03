@@ -6,7 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from gut_former.datamodule import BacteriaDataModule
 from gut_former.lit_module import (
-    GutFormerModule,
+    AutoEncoderModule,
     load_model_state_dict,
     resolve_accelerator,
     verify_checkpoint_features,
@@ -51,7 +51,7 @@ def run_training(cfg: DictConfig, **_):
         model.load_state_dict(load_model_state_dict(cfg.task.init_weights))
         log.info("Initialized model weights from: %s", cfg.task.init_weights)
 
-    module = GutFormerModule(
+    module = AutoEncoderModule(
         model=model,
         loss_fn=hydra.utils.instantiate(cfg.task.loss),
         optimizer=hydra.utils.instantiate(cfg.task.optimizer),

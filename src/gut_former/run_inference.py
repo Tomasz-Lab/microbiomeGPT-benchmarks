@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 
 from gut_former.datamodule import BacteriaDataModule
 from gut_former.lit_module import (
-    GutFormerModule,
+    AutoEncoderModule,
     is_lightning_checkpoint,
     load_model_state_dict,
     load_module,
@@ -58,7 +58,7 @@ def run_inference(cfg: DictConfig, **_):
             num_bacteria=datamodule.num_bacteria,
         )
         model.load_state_dict(load_model_state_dict(cfg.task.checkpoint_path))
-        module = GutFormerModule(model)
+        module = AutoEncoderModule(model)
 
     # Inference
     trainer = hydra.utils.instantiate(

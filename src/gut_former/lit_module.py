@@ -10,7 +10,7 @@ from torch.nn.functional import mse_loss
 log = logging.getLogger(__name__)
 
 
-class GutFormerModule(L.LightningModule):
+class AutoEncoderModule(L.LightningModule):
     """Training, validation and prediction steps for a taxonomy/pathways autoencoder.
 
     `model_config` and `model_kwargs` are stored in the checkpoint so `load_module` can rebuild
@@ -127,11 +127,11 @@ def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
 
 def load_module(
     path: str | Path, loss_fn: nn.Module | None = None, map_location="cpu"
-) -> GutFormerModule:
+) -> AutoEncoderModule:
     """Rebuild the network from the shape stored in a Lightning checkpoint and load its weights."""
     hparams = torch.load(path, map_location=map_location, weights_only=True)["hyper_parameters"]
     model_builder = hydra.utils.instantiate(hparams["model_config"])
     model = model_builder(**hparams["model_kwargs"])
-    return GutFormerModule.load_from_checkpoint(
+    return AutoEncoderModule.load_from_checkpoint(
         path, model=model, loss_fn=loss_fn, map_location=map_location
     )
