@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import hydra
 import lightning.pytorch as L
@@ -47,6 +48,15 @@ def run_training(cfg: DictConfig, **_):
         model_config=OmegaConf.to_container(cfg.model, resolve=True),
         data_schema=data_schema.to_dict(),
     )
+
+    if cfg.task.resume_from is not None:
+        # ModelCheckpoint restores its best score only when saving to the same folder, and every
+        # Hydra run has a new output folder, so keep writing next to the resumed checkpoint
+        checkpoint_dir = str(Path(cfg.task.resume_from).resolve().parent)
+        for callback_cfg in cfg.trainer.get("callbacks") or []:
+            if callback_cfg.get("_target_", "").endswith(".ModelCheckpoint"):
+                callback_cfg.dirpath = checkpoint_dir
+        log.info("Resuming: checkpoints continue in %s", checkpoint_dir)
 
     # Training Model
     trainer = hydra.utils.instantiate(

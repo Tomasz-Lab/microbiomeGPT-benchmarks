@@ -136,10 +136,12 @@ Training settings are supplied as Hydra overrides:
 
 Outputs in the Hydra run directory:
 
-- `{date}_{dataset}_training_stats.csv` — one row per epoch with every metric the model logs
-  (`train_*` and `val_*`; the legacy scripts name the validation columns `test_*`)
+- `lightning_logs/version_0/metrics.csv` — every metric the model logs (`train_*` and `val_*`),
+  written by Lightning's `CSVLogger`. Training and validation values are on separate rows; use
+  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch. The legacy scripts write
+  `{date}_{dataset}_training_stats.csv` instead, with the validation columns named `test_*`.
+- `lightning_logs/version_0/hparams.yaml` — the run's hyperparameters
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
-- `lightning_logs/` — Lightning's CSV logs and hyperparameters
 
 On Apple Silicon `auto` uses the CPU: the loss uses `torch.cdist`, whose backward pass is not
 implemented for MPS.
@@ -155,6 +157,14 @@ uv run python src/gut_former/main.py \
   trainer.max_epochs=100 \
   task.resume_from=/path/to/checkpoints/last.ckpt
 ```
+
+The resumed run is a new Hydra run, so its `metrics.csv` contains only the epochs trained after
+resuming; the earlier epochs stay in the original run's directory.
+
+Checkpoints, however, keep going in the folder of the checkpoint you resume from, so the best
+checkpoint is chosen across all epochs, before and after resuming. Resuming from an older
+checkpoint of a finished run therefore continues that run and overwrites its `last.ckpt`. To
+branch off instead, copy the checkpoint to a new folder first.
 
 Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
 

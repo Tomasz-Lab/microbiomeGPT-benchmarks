@@ -19,12 +19,11 @@ callbacks:
     mode: min
     save_top_k: 1
     save_last: true
-    # Save after EpochStatsWriter has recorded the epoch, so its history in the checkpoint is complete
-    save_on_train_epoch_end: true
-  - _target_: gut_former.callbacks.EpochStatsWriter
-    path: ${hydra:runtime.output_dir}/${now:%Y%m%d}_${dataset.name}_training_stats.csv
 
+# lightning_logs/version_0/metrics.csv is the run's metrics log
 logger:
   - _target_: lightning.pytorch.loggers.CSVLogger
     save_dir: ${hydra:runtime.output_dir}
     name: lightning_logs
+    # Write after every step, so a killed or timed-out job keeps the epochs it finished
+    flush_logs_every_n_steps: 1
