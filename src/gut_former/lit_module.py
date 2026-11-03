@@ -5,11 +5,23 @@ import hydra
 import lightning.pytorch as L
 import torch
 from torch import nn
-from torch.nn.functional import mse_loss
+from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
 
 from gut_former.schema import DataSchema
 
 log = logging.getLogger(__name__)
+
+
+def _stage_metrics() -> MetricCollection:
+    # Each metric gets its own inputs, so no shared compute groups
+    return MetricCollection(
+        {
+            "loss": MeanMetric(),
+            "taxonomy_mse": MeanSquaredError(),
+            "pathways_mse": MeanSquaredError(),
+        },
+        compute_groups=False,
+    )
 
 
 class AutoEncoderModule(L.LightningModule):
@@ -33,6 +45,10 @@ class AutoEncoderModule(L.LightningModule):
         self.optimizer_factory = optimizer
         self.save_hyperparameters(ignore=["model", "loss_fn", "optimizer"])
 
+        # Separate attributes, not ModuleDict keys: "train" clashes with nn.Module.train
+        self.train_metrics = _stage_metrics()
+        self.val_metrics = _stage_metrics()
+
     def forward(self, xt, xp):
         # Dataset yields (taxonomy, pathways); the model takes (pathways, taxonomy)
         return self.model(xp, xt)
@@ -43,16 +59,17 @@ class AutoEncoderModule(L.LightningModule):
         xt, xp = batch
         xt_pred, xp_pred, _ = self(xt, xp)
         loss = self.loss_fn(xt, xt_pred, xp, xp_pred)
+
+        # Metric objects accumulate over the epoch and sync across devices themselves;
+        # Lightning calls compute() and reset() at epoch end
+        metrics = self.train_metrics if stage == "train" else self.val_metrics
+        metrics["loss"].update(loss.detach(), weight=xt.size(0))
+        metrics["taxonomy_mse"].update(xt_pred, xt)
+        metrics["pathways_mse"].update(xp_pred, xp)
         self.log_dict(
-            {
-                f"{stage}_loss": loss,
-                f"{stage}_taxonomy_mse": mse_loss(xt_pred, xt),
-                f"{stage}_pathways_mse": mse_loss(xp_pred, xp),
-            },
+            {f"{stage}_{name}": metric for name, metric in metrics.items()},
             on_step=False,
             on_epoch=True,
-            sync_dist=True,
-            batch_size=xt.size(0),
             prog_bar=stage == "val",
         )
         return loss
