@@ -1,9 +1,19 @@
 _target_: lightning.pytorch.Trainer
 
 accelerator: auto
-# Keep a single device: with several, trainer.predict returns only this rank's batches
+# Keep a single device: with several, each rank would run its own PredictionWriter
 devices: 1
 logger: false
 enable_progress_bar: false
 enable_model_summary: false
 default_root_dir: ${hydra:runtime.output_dir}
+
+callbacks:
+  - _target_: gut_former.callbacks.PredictionWriter
+    output_dir: ${hydra:runtime.output_dir}
+    # Prediction output -> file; modality outputs use the dataset's feature names as columns
+    filenames:
+      taxonomy: pred_taxonomy_${dataset.name}.csv
+      pathways: pred_pathways_${dataset.name}.csv
+      latent: latent_${dataset.name}.csv
+    column_prefix: z

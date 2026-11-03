@@ -188,7 +188,10 @@ The inference trainer comes from `conf/trainer/inference.yaml`; override it the 
 `trainer.accelerator=cpu`.
 
 Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
-`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory.
+`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory by the `PredictionWriter`
+callback. Its `filenames` setting in `conf/trainer/inference.yaml` maps each model output to a
+file: modality outputs take the dataset's feature names as columns, and other outputs (the latent
+space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
 
 ### Legacy scripts
 

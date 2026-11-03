@@ -1,10 +1,7 @@
 import logging
-from pathlib import Path
 
 import hydra
-import pandas as pd
-import torch
-from hydra.core.hydra_config import HydraConfig
+from lightning.pytorch.callbacks import BasePredictionWriter
 from omegaconf import DictConfig
 
 from gut_former.lit_module import (
@@ -31,9 +28,6 @@ def run_inference(cfg: DictConfig, **_):
             "Inference requires a trained model checkpoint; set checkpoint_path in config."
         )
 
-    output_path = Path(HydraConfig.get().runtime.output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
     # Loading & Preparing Data
     datamodule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup("predict")
@@ -56,33 +50,11 @@ def run_inference(cfg: DictConfig, **_):
     trainer = hydra.utils.instantiate(
         cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
     )
-    batches = trainer.predict(module, datamodule=datamodule)
-    if not batches:
-        raise RuntimeError("Prediction returned no batches; is the inference dataset empty?")
-    preds = {key: torch.cat([batch[key] for batch in batches]).cpu().numpy() for key in batches[0]}
+    if not any(isinstance(callback, BasePredictionWriter) for callback in trainer.callbacks):
+        log.warning(
+            "No prediction writer is configured in trainer.callbacks; nothing will be saved."
+        )
 
-    # Storing outputs
-    t_df, p_df = datamodule.taxonomy, datamodule.pathways
-
-    t_pred_df = pd.DataFrame(preds["taxonomy"], index=t_df.index, columns=t_df.columns)
-    t_pred_df.index.name = t_df.index.name
-    t_output_path = f"{output_path}/pred_taxonomy_{cfg.dataset.name}.csv"
-    t_pred_df.to_csv(t_output_path, index=True)
-
-    p_pred_df = pd.DataFrame(preds["pathways"], index=p_df.index, columns=p_df.columns)
-    p_pred_df.index.name = p_df.index.name
-    p_output_path = f"{output_path}/pred_pathways_{cfg.dataset.name}.csv"
-    p_pred_df.to_csv(p_output_path, index=True)
-
-    latent_cols = [f"z{i}" for i in range(preds["latent"].shape[1])]
-    latent_df = pd.DataFrame(preds["latent"], index=p_df.index, columns=latent_cols)
-    latent_df.index.name = t_df.index.name
-    latent_output_path = f"{output_path}/latent_{cfg.dataset.name}.csv"
-    latent_df.to_csv(latent_output_path, index=True)
-
-    log.info(
-        "Inference completed.\nSaved outputs:\n  - Latent: %s\n  - P_pred:  %s\n  - T_pred:  %s",
-        latent_output_path,
-        p_output_path,
-        t_output_path,
-    )
+    # Outputs are written by the PredictionWriter callback (conf/trainer/inference.yaml)
+    trainer.predict(module, datamodule=datamodule, return_predictions=False)
+    log.info("Inference completed.")

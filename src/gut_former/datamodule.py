@@ -91,6 +91,11 @@ class BacteriaDataModule(L.LightningDataModule):
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
 
+    @property
+    def predict_index(self) -> pd.Index:
+        """Sample IDs in the order of predict_dataloader."""
+        return self.taxonomy.index
+
     def data_schema(self) -> DataSchema:
         return DataSchema(
             {
