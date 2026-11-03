@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
 from gut_former.schema import DataSchema
-from gut_former.utils.project_paths import find_data_path
+from settings.paths import DATASET_DIR
 
 
 def load_frames(
@@ -51,7 +51,7 @@ class BacteriaDataModule(L.LightningDataModule):
         self.taxa_multiplier = taxa_multiplier
         self.pathways_multiplier = pathways_multiplier
         self.batch_size = batch_size
-        self.data_dir = data_dir if data_dir is not None else find_data_path()
+        self.data_dir = data_dir if data_dir is not None else DATASET_DIR
         self.val_size = val_size
         self.seed = seed
 

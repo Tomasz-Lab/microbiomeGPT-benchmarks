@@ -47,6 +47,10 @@ Execute commands or scripts directly within the project's environment without ma
 source .venv/bin/activate
 ```
 
+### 🧪 Tests
+
+Run all tests with `uv run pytest`, or a specific test file with `uv run pytest tests/nmf/test_bicv.py`.
+
 ## 📂 Data
 
 Place input files in the `data/` directory:
@@ -281,6 +285,21 @@ The `bicv_nmf_stats.csv` output in the Hydra run directory contains metrics for 
 signatures, and runs.
 
 The optimal signature count is printed at the end of the run.
+
+
+## Data profiling
+
+Generate an interactive Sweetviz report with dataset summaries, column distributions, and feature
+associations:
+
+```bash
+uv run python src/gut_former/main.py task=run_data_profiling
+```
+
+By default, this profiles `data/metadata_sample.csv`. Set `task.path=path/to/data.csv` to use
+another CSV. The HTML report, `data_profiling_report.html`, is saved in the Hydra run directory
+under `outputs_hydra/`.
+
 
 ## 🔧 Troubleshooting
 

@@ -12,3 +12,9 @@ experiment:
 dataset:
   kind: pathways
   subset: all
+
+model:
+  parameters:
+    # BiCV parallelizes folds/signatures; keep NMF's inner random starts sequential.
+    # The regular NMF experiment retains its parallel n_jobs setting.
+    n_jobs: 1

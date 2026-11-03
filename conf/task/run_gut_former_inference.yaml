@@ -4,5 +4,5 @@ _partial_: true
 name: gut_former_inference
 
 # Lightning .ckpt, or a legacy .pt state_dict (model is then rebuilt from cfg.model and the data)
-checkpoint_path: # ${oc.env:PROJECT_ROOT}/output/checkpoint_sample.pt
+checkpoint_path: null
 verbose: true
