@@ -7,6 +7,8 @@ logger: false
 enable_progress_bar: false
 enable_model_summary: false
 default_root_dir: ${hydra:runtime.output_dir}
+# null (off), "simple", "advanced" or "pytorch"; or a config with _target_ for profiler options
+profiler: null
 
 callbacks:
   - _target_: gut_former.callbacks.RunLogger

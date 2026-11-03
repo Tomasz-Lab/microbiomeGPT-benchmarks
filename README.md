@@ -124,6 +124,7 @@ Training settings are supplied as Hydra overrides:
 | `trainer.max_epochs` | `55` | Number of training epochs |
 | `trainer.accelerator` | `auto` | `auto` (CUDA if available, else CPU), `cpu`, `cuda`/`gpu` |
 | `trainer.devices` | `auto` | Number of devices |
+| `trainer.profiler` | `null` | Profiler: `simple`, `advanced` or `pytorch` (off by default) |
 | `datamodule.batch_size` | `16` | Batch size |
 | `datamodule.val_size` | `0.1` | Fraction of samples held out for validation |
 | `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
