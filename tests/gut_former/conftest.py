@@ -1,64 +1,44 @@
-from dataclasses import dataclass
-
 import pytest
 import torch
 
 from gut_former.model import BacteriaModel
 
 
-@dataclass(frozen=True, slots=True)
-class ModelDims:
-    num_pathways: int
-    num_bacteria: int
-    embedding_dim: int
-    latent_size: int
+@pytest.fixture(scope="session")
+def small_model_config():
+    return {"num_pathways": 7, "num_bacteria": 5, "embedding_dim": 8, "latent_size": 4}
 
 
-@dataclass(frozen=True, eq=False, slots=True)
-class ModelInputs:
-    pathways: torch.Tensor
-    taxonomy: torch.Tensor
+@pytest.fixture(scope="session")
+def small_training_config():
+    return {"batch_size": 4}
 
 
-DIMS = ModelDims(num_pathways=7, num_bacteria=5, embedding_dim=8, latent_size=4)
-BATCH_SIZE = 4
-
-
-def make_model(seed=0, dims=DIMS) -> BacteriaModel:
-    # fork_rng restores the global RNG afterwards, so seeding here doesn't leak into other tests
+@pytest.fixture(scope="session")
+def small_model(small_model_config):
     with torch.random.fork_rng(devices=[]):
-        torch.manual_seed(seed)
-        return BacteriaModel(
-            num_pathways=dims.num_pathways,
-            num_bacteria=dims.num_bacteria,
-            embedding_dim=dims.embedding_dim,
-            latent_size=dims.latent_size,
-        )
-
-
-def make_inputs(batch_size=BATCH_SIZE, dims=DIMS, seed=0) -> ModelInputs:
-    gen = torch.Generator().manual_seed(seed)
-    return ModelInputs(
-        pathways=torch.rand(batch_size, dims.num_pathways, 1, generator=gen),
-        taxonomy=torch.rand(batch_size, dims.num_bacteria, 1, generator=gen),
-    )
-
-
-@pytest.fixture(scope="session")
-def dims():
-    return DIMS
-
-
-@pytest.fixture(scope="session")
-def model_factory():
-    return make_model
+        torch.manual_seed(0)
+        return BacteriaModel(**small_model_config).eval()
 
 
 @pytest.fixture
-def model():
-    return make_model(seed=0).eval()
+def small_model_same_seed(small_model_config):
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(0)
+        return BacteriaModel(**small_model_config).eval()
 
 
 @pytest.fixture
-def inputs():
-    return make_inputs()
+def small_model_other_seed(small_model_config):
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(42)
+        return BacteriaModel(**small_model_config).eval()
+
+
+@pytest.fixture(scope="session")
+def small_model_inputs(small_model_config, small_training_config):
+    batch_size = small_training_config["batch_size"]
+    gen = torch.Generator().manual_seed(0)
+    pathways = torch.rand(batch_size, small_model_config["num_pathways"], 1, generator=gen)
+    taxonomy = torch.rand(batch_size, small_model_config["num_bacteria"], 1, generator=gen)
+    return pathways, taxonomy
