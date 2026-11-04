@@ -4,12 +4,11 @@ import hydra
 from lightning.pytorch.callbacks import BasePredictionWriter
 from omegaconf import DictConfig
 
-from gut_former.lit_module import (
-    AutoEncoderModule,
+from gut_former.system import (
+    build_model,
     is_lightning_checkpoint,
     load_model_state_dict,
-    load_module,
-    resolve_accelerator,
+    load_system,
     verify_checkpoint_schema,
 )
 from gut_former.utils.log_config import setup_logging
@@ -35,23 +34,23 @@ def run_inference(cfg: DictConfig, **_):
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
     verify_checkpoint_schema(cfg.task.checkpoint_path, data_schema)
     if is_lightning_checkpoint(cfg.task.checkpoint_path):
-        module = load_module(cfg.task.checkpoint_path)
+        system = load_system(
+            cfg.task.checkpoint_path, system_class=hydra.utils.get_class(cfg.system._target_)
+        )
     else:
         log.warning(
             "Legacy checkpoint: rebuilding the model from cfg.model and the inference data."
         )
-        model = hydra.utils.instantiate(cfg.model)(data_schema=data_schema)
+        model = build_model(cfg.model, data_schema)
         model.load_state_dict(load_model_state_dict(cfg.task.checkpoint_path))
-        module = AutoEncoderModule(model)
+        system = hydra.utils.instantiate(cfg.system)(model=model)
 
     # Inference
-    trainer = hydra.utils.instantiate(
-        cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
-    )
+    trainer = hydra.utils.instantiate(cfg.trainer)
     if not any(isinstance(callback, BasePredictionWriter) for callback in trainer.callbacks):
         log.warning(
             "No prediction writer is configured in trainer.callbacks; nothing will be saved."
         )
 
     # Outputs are written by the PredictionWriter callback (conf/trainer/inference.yaml)
-    trainer.predict(module, datamodule=datamodule, return_predictions=False)
+    trainer.predict(system, datamodule=datamodule, return_predictions=False)

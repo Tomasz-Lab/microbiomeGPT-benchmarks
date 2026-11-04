@@ -5,10 +5,9 @@ import hydra
 import lightning.pytorch as L
 from omegaconf import DictConfig, OmegaConf
 
-from gut_former.lit_module import (
-    AutoEncoderModule,
+from gut_former.system import (
+    build_model,
     load_model_state_dict,
-    resolve_accelerator,
     verify_checkpoint_schema,
 )
 from gut_former.utils.log_config import setup_logging
@@ -35,13 +34,13 @@ def run_training(cfg: DictConfig, **_):
             verify_checkpoint_schema(checkpoint_path, data_schema)
 
     # Defining Model
-    model = hydra.utils.instantiate(cfg.model)(data_schema=data_schema)
+    model = build_model(cfg.model, data_schema)
 
     if cfg.task.init_weights is not None:
         model.load_state_dict(load_model_state_dict(cfg.task.init_weights))
         log.info("Initialized model weights from: %s", cfg.task.init_weights)
 
-    module = AutoEncoderModule(
+    system = hydra.utils.instantiate(cfg.system)(
         model=model,
         loss_fn=hydra.utils.instantiate(cfg.task.loss),
         optimizer=hydra.utils.instantiate(cfg.task.optimizer),
@@ -59,7 +58,5 @@ def run_training(cfg: DictConfig, **_):
         log.info("Resuming: checkpoints continue in %s", checkpoint_dir)
 
     # Training Model
-    trainer = hydra.utils.instantiate(
-        cfg.trainer, accelerator=resolve_accelerator(cfg.trainer.accelerator)
-    )
-    trainer.fit(module, datamodule=datamodule, ckpt_path=cfg.task.resume_from)
+    trainer = hydra.utils.instantiate(cfg.trainer)
+    trainer.fit(system, datamodule=datamodule, ckpt_path=cfg.task.resume_from)

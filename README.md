@@ -103,13 +103,20 @@ configuration/log files under
 ## 🧠 Model
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
-`AutoEncoderModule` (`src/gut_former/lit_module.py`) holds the training, validation and prediction
+`AutoEncoderSystem` (`src/gut_former/system.py`) holds the training, validation and prediction
 steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
 can be used directly from notebooks or HPC scripts without Hydra.
 
 After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.py`) with the
-feature names of each modality. The model reads its input sizes from the schema
-(`BacteriaModel.from_schema`), so the runners don't pass data dimensions to the model.
+feature names of each modality. `BacteriaModel` takes the schema and reads its input sizes from
+it, so the runners don't pass data dimensions to the model.
+
+The Lightning system (the `LightningModule`, named "system" to avoid confusing it with the model,
+as in the [Lightning style guide](https://lightning.ai/docs/pytorch/stable/starter/style_guide.html))
+is chosen in config, like the model: `conf/system/autoencoder.yaml` points to `AutoEncoderSystem`.
+To try another training system, add a config to `conf/system/` and select it with
+`system=<name>`; the system must accept the same constructor arguments as `AutoEncoderSystem`
+(`model`, `loss_fn`, `optimizer`, `model_config`, `data_schema`).
 
 ### Train from scratch
 
@@ -126,7 +133,7 @@ Training settings are supplied as Hydra overrides:
 |---|---|---|
 | `dataset.name` | `sample` | Dataset name |
 | `trainer.max_epochs` | `55` | Number of training epochs |
-| `trainer.accelerator` | `auto` | `auto` (CUDA if available, else CPU), `cpu`, `cuda`/`gpu` |
+| `trainer.accelerator` | `auto` | `auto` (Lightning picks CUDA, MPS or CPU), `cpu`, `cuda`/`gpu`, `mps` |
 | `trainer.devices` | `auto` | Number of devices |
 | `trainer.profiler` | `null` | Profiler: `simple`, `advanced` or `pytorch` (off by default) |
 | `datamodule.batch_size` | `16` | Batch size |
@@ -147,8 +154,9 @@ Outputs in the Hydra run directory:
 - `lightning_logs/version_0/hparams.yaml` — the run's hyperparameters
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
 
-On Apple Silicon `auto` uses the CPU: the loss uses `torch.cdist`, whose backward pass is not
-implemented for MPS.
+On Apple Silicon `auto` selects MPS, where training fails: the loss uses `torch.cdist`, whose
+backward pass is not implemented for MPS. Train there with `trainer.accelerator=cpu`; inference
+has no backward pass and runs on MPS.
 
 ### Resume and fine-tuning
 

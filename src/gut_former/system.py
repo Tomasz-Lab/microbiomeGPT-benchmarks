@@ -24,10 +24,10 @@ def _stage_metrics() -> MetricCollection:
     )
 
 
-class AutoEncoderModule(L.LightningModule):
+class AutoEncoderSystem(L.LightningModule):
     """Training, validation and prediction steps for a taxonomy/pathways autoencoder.
 
-    `model_config` and `data_schema` are stored in the checkpoint so `load_module` can rebuild
+    `model_config` and `data_schema` are stored in the checkpoint so `load_system` can rebuild
     the network without the original data or Hydra config.
     """
 
@@ -95,13 +95,6 @@ class AutoEncoderModule(L.LightningModule):
         return self.optimizer_factory(self.parameters())
 
 
-def resolve_accelerator(accelerator: str) -> str:
-    """Map "auto" to CUDA or CPU; Lightning's own "auto" picks MPS, which lacks cdist backward."""
-    if accelerator != "auto":
-        return accelerator
-    return "cuda" if torch.cuda.is_available() else "cpu"
-
-
 def is_lightning_checkpoint(path: str | Path) -> bool:
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     return "hyper_parameters" in checkpoint
@@ -133,6 +126,12 @@ def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     check_schema(DataSchema.from_dict(expected), data_schema)
 
 
+def build_model(model_config, data_schema: DataSchema) -> nn.Module:
+    """Instantiate the model config with the data schema."""
+    # Not instantiate(..., data_schema=...): Hydra would merge the dataclass into the config
+    return hydra.utils.instantiate(model_config, _partial_=True)(data_schema=data_schema)
+
+
 def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
     """Model weights from a Lightning checkpoint or a legacy bare state_dict file."""
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
@@ -146,13 +145,15 @@ def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
     }
 
 
-def load_module(
-    path: str | Path, loss_fn: nn.Module | None = None, map_location="cpu"
-) -> AutoEncoderModule:
+def load_system(
+    path: str | Path,
+    loss_fn: nn.Module | None = None,
+    map_location="cpu",
+    system_class: type[L.LightningModule] = AutoEncoderSystem,
+) -> L.LightningModule:
     """Rebuild the network from the schema stored in a Lightning checkpoint and load its weights."""
     hparams = torch.load(path, map_location=map_location, weights_only=True)["hyper_parameters"]
-    model_builder = hydra.utils.instantiate(hparams["model_config"])
-    model = model_builder(data_schema=DataSchema.from_dict(hparams["data_schema"]))
-    return AutoEncoderModule.load_from_checkpoint(
+    model = build_model(hparams["model_config"], DataSchema.from_dict(hparams["data_schema"]))
+    return system_class.load_from_checkpoint(
         path, model=model, loss_fn=loss_fn, map_location=map_location
     )

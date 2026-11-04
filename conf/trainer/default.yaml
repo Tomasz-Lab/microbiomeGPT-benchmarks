@@ -1,6 +1,7 @@
 _target_: lightning.pytorch.Trainer
 
 max_epochs: 55
+# On Apple Silicon "auto" picks MPS, where training fails (no torch.cdist backward); use cpu there
 accelerator: auto
 devices: auto
 num_sanity_val_steps: 0

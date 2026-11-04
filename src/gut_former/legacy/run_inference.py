@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
 
-import hydra
 import pandas as pd
 import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
+from gut_former.schema import DataSchema
+from gut_former.system import build_model
 from gut_former.utils.log_config import setup_logging
 from settings.paths import DATASET_DIR
 
@@ -48,14 +49,8 @@ def run_inference(cfg: DictConfig, **_):
     # Recreating Model
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model_builder = hydra.utils.instantiate(
-        cfg.model,
-    )
-
-    model = model_builder(
-        num_pathways=p_df.shape[1],
-        num_bacteria=t_df.shape[1],
-    ).to(DEVICE)
+    data_schema = DataSchema({"taxonomy": tuple(t_df.columns), "pathways": tuple(p_df.columns)})
+    model = build_model(cfg.model, data_schema).to(DEVICE)
 
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
     checkpoint_dict = torch.load(cfg.task.checkpoint_path, weights_only=True, map_location=DEVICE)
