@@ -19,6 +19,8 @@ def run_training(cfg: DictConfig, **_):
     # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
+    log.info("Starting training script..")
+
     if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
         raise ValueError("Set either task.resume_from or task.init_weights, not both.")
 
