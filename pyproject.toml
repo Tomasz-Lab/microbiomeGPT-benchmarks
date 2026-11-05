@@ -22,6 +22,7 @@ dependencies = [
     "sweetviz>=2.3.3,<3",
     "hydra-core>=1.3.7",
     "python-dotenv>=1.2.4",
+    "lightning>=2.6.6",
 ]
 
 [project.scripts]
@@ -79,3 +80,4 @@ disable_error_code = ["import-untyped"]  # Third-party libraries lack type stubs
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
+tmp_path_retention_policy = "failed"

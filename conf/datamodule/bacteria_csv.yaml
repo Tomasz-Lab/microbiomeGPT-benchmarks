@@ -1,0 +1,8 @@
+_target_: gut_former.datamodule.BacteriaDataModule
+
+name: ${dataset.name}
+taxa_multiplier: ${dataset.taxa_multiplier}
+pathways_multiplier: ${dataset.pathways_multiplier}
+batch_size: 16
+val_size: 0.1
+seed: 0

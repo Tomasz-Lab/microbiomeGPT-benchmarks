@@ -1,0 +1,19 @@
+_target_: gut_former.legacy.run_training.run_training
+_partial_: true
+
+name: gut_former_training_legacy
+
+batch_size: 16
+epochs: 55
+checkpoint_path: null
+verbose: true
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1.893292917167e-4
+  weight_decay: 0.001
+
+loss:
+  _target_: gut_former.loss.CompositeLoss
+  _partial_: false
