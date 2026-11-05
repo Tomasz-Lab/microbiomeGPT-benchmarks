@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from typing import Self, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -8,8 +9,15 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import non_negative_factorization
 
 from gut_former.utils.metrics import cos_sim, exp_var
+from gut_former.utils.types import Matrix
 
 log = logging.getLogger(__name__)
+
+
+class NMFEvalResult(TypedDict):
+    W_val: Matrix
+    exp_var_val: float
+    cos_sim_val: float
 
 
 @dataclass(frozen=True)
@@ -17,8 +25,8 @@ class NMFFitResult:
     seed: int
     exp_var: float
     cos_sim: float
-    W: np.ndarray
-    H: np.ndarray
+    W: Matrix
+    H: Matrix
 
 
 class NMF(BaseEstimator, TransformerMixin):
@@ -32,7 +40,7 @@ class NMF(BaseEstimator, TransformerMixin):
         n_runs: int,
         n_jobs: int,
         selection_metric: str,
-    ):
+    ) -> None:
         self.n_components = n_components
         self.init = init
         self.solver = solver
@@ -42,12 +50,12 @@ class NMF(BaseEstimator, TransformerMixin):
         self.n_jobs = n_jobs
         self.selection_metric = selection_metric
 
-        self.H_: np.ndarray | None = None
-        self.W_train_: np.ndarray | None = None
+        self.H_: Matrix | None = None
+        self.W_train_: Matrix | None = None
         self.best_seed_: int | None = None
         self.history_: list[dict[str, float]] = []
 
-    def _single_fit_run(self, X: np.ndarray, seed: int) -> NMFFitResult:
+    def _single_fit_run(self, X: Matrix, seed: int) -> NMFFitResult:
         W, H, _ = non_negative_factorization(
             X,
             n_components=self.n_components,
@@ -87,7 +95,11 @@ class NMF(BaseEstimator, TransformerMixin):
             return run.exp_var + run.cos_sim
         raise ValueError(f"Unknown selection metric: {self.selection_metric}")
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y=None):
+    def fit(
+        self,
+        X: pd.DataFrame | Matrix,
+        y: object | None = None,
+    ) -> Self:
         X_arr = X.values if isinstance(X, pd.DataFrame) else X
 
         results: list[NMFFitResult] = Parallel(n_jobs=self.n_jobs)(
@@ -122,7 +134,11 @@ class NMF(BaseEstimator, TransformerMixin):
         )
         return self
 
-    def transform(self, X, H: np.ndarray | None = None) -> np.ndarray:
+    def transform(
+        self,
+        X: pd.DataFrame | Matrix,
+        H: Matrix | None = None,
+    ) -> Matrix:
         H = self.H_ if H is None else H
         if H is None:
             raise RuntimeError("Model is not yet fitted. Call .fit() first.")
@@ -140,7 +156,7 @@ class NMF(BaseEstimator, TransformerMixin):
         )
         return W
 
-    def evaluate(self, X_val: pd.DataFrame | np.ndarray) -> dict[str, float]:
+    def evaluate(self, X_val: pd.DataFrame | Matrix) -> NMFEvalResult:
         W_val = self.transform(X_val)
         X_arr = X_val.values if isinstance(X_val, pd.DataFrame) else X_val
 
