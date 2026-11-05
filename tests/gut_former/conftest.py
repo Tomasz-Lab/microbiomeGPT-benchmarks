@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from gut_former.model import BacteriaModel
+from gut_former.schema import DataSchema
 
 
 @pytest.fixture(scope="session")
@@ -15,24 +16,34 @@ def small_training_config():
 
 
 @pytest.fixture(scope="session")
-def small_model(small_model_config):
+def small_data_schema(small_model_config):
+    return DataSchema(
+        {
+            "pathways": tuple(f"pathway_{i}" for i in range(small_model_config["num_pathways"])),
+            "taxonomy": tuple(f"bacterium_{i}" for i in range(small_model_config["num_bacteria"])),
+        }
+    )
+
+
+@pytest.fixture(scope="session")
+def small_model(small_model_config, small_data_schema):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(0)
-        return BacteriaModel(**small_model_config).eval()
+        return BacteriaModel(data_schema=small_data_schema, **small_model_config).eval()
 
 
 @pytest.fixture
-def small_model_same_seed(small_model_config):
+def small_model_same_seed(small_model_config, small_data_schema):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(0)
-        return BacteriaModel(**small_model_config).eval()
+        return BacteriaModel(data_schema=small_data_schema, **small_model_config).eval()
 
 
 @pytest.fixture
-def small_model_other_seed(small_model_config):
+def small_model_other_seed(small_model_config, small_data_schema):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(42)
-        return BacteriaModel(**small_model_config).eval()
+        return BacteriaModel(data_schema=small_data_schema, **small_model_config).eval()
 
 
 @pytest.fixture(scope="session")
