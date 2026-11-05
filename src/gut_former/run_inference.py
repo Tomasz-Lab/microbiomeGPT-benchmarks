@@ -1,98 +1,56 @@
 import logging
-from pathlib import Path
 
 import hydra
-import pandas as pd
-import torch
-from hydra.core.hydra_config import HydraConfig
+from lightning.pytorch.callbacks import BasePredictionWriter
 from omegaconf import DictConfig
 
+from gut_former.system import (
+    build_model,
+    is_lightning_checkpoint,
+    load_model_state_dict,
+    load_system,
+    verify_checkpoint_schema,
+)
 from gut_former.utils.log_config import setup_logging
-from settings.paths import DATASET_DIR
 
 log = logging.getLogger(__name__)
 
 
 def run_inference(cfg: DictConfig, **_):
     # Setting up project
-    setup_logging()
-
-    log.info("Starting inference script..\n ")
+    setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
     if cfg.task.checkpoint_path is None:
         raise ValueError(
             "Inference requires a trained model checkpoint; set checkpoint_path in config."
         )
 
-    output_path = Path(HydraConfig.get().runtime.output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
     # Loading & Preparing Data
-    t_df = (
-        pd.read_csv(
-            f"{DATASET_DIR}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
-        )
-        .fillna(0)
-        .sort_index()
-        * cfg.dataset.taxa_multiplier
-    )
-    p_df = (
-        pd.read_csv(
-            f"{DATASET_DIR}/pathways_{cfg.dataset.name}.csv", index_col=[0], low_memory=False
-        )
-        .fillna(0)
-        .sort_index()
-        * cfg.dataset.pathways_multiplier
-    )
-
-    t_tensor = torch.tensor(t_df.values, dtype=torch.float32).unsqueeze(-1)
-    p_tensor = torch.tensor(p_df.values, dtype=torch.float32).unsqueeze(-1)
+    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    datamodule.setup("predict")
+    data_schema = datamodule.data_schema()
 
     # Recreating Model
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model_builder = hydra.utils.instantiate(
-        cfg.model,
-    )
-
-    model = model_builder(
-        num_pathways=p_df.shape[1],
-        num_bacteria=t_df.shape[1],
-    ).to(DEVICE)
-
     log.info("Recreating model from checkpoint: %s\n", cfg.task.checkpoint_path)
-    checkpoint_dict = torch.load(cfg.task.checkpoint_path, weights_only=True, map_location=DEVICE)
-    model.load_state_dict(checkpoint_dict)
-    model.eval()
-    model.cpu()
+    verify_checkpoint_schema(cfg.task.checkpoint_path, data_schema)
+    if is_lightning_checkpoint(cfg.task.checkpoint_path):
+        system = load_system(
+            cfg.task.checkpoint_path, system_class=hydra.utils.get_class(cfg.system._target_)
+        )
+    else:
+        log.warning(
+            "Legacy checkpoint: rebuilding the model from cfg.model and the inference data."
+        )
+        model = build_model(cfg.model, data_schema)
+        model.load_state_dict(load_model_state_dict(cfg.task.checkpoint_path))
+        system = hydra.utils.instantiate(cfg.system)(model=model)
 
     # Inference
-    t_pred, p_pred, latent = model(p_tensor, t_tensor)
+    trainer = hydra.utils.instantiate(cfg.trainer)
+    if not any(isinstance(callback, BasePredictionWriter) for callback in trainer.callbacks):
+        log.warning(
+            "No prediction writer is configured in trainer.callbacks; nothing will be saved."
+        )
 
-    # Storing outputs
-    t_pred_df = pd.DataFrame(
-        t_pred.detach().cpu().numpy().squeeze(-1), index=t_df.index, columns=t_df.columns
-    )
-    t_pred_df.index.name = t_df.index.name
-    t_output_path = f"{output_path}/pred_taxonomy_{cfg.dataset.name}.csv"
-    t_pred_df.to_csv(t_output_path, index=True)
-
-    p_pred_df = pd.DataFrame(
-        p_pred.detach().cpu().numpy().squeeze(-1), index=p_df.index, columns=p_df.columns
-    )
-    p_pred_df.index.name = p_df.index.name
-    p_output_path = f"{output_path}/pred_pathways_{cfg.dataset.name}.csv"
-    p_pred_df.to_csv(p_output_path, index=True)
-
-    latent_cols = [f"z{i}" for i in range(cfg.model.latent_size)]
-    latent_df = pd.DataFrame(latent.detach().cpu().numpy(), index=p_df.index, columns=latent_cols)
-    latent_df.index.name = t_df.index.name
-    latent_output_path = f"{output_path}/latent_{cfg.dataset.name}.csv"
-    latent_df.to_csv(latent_output_path, index=True)
-
-    log.info(
-        "Inference completed.\nSaved outputs:\n  - Latent: %s\n  - P_pred:  %s\n  - T_pred:  %s",
-        latent_output_path,
-        p_output_path,
-        t_output_path,
-    )
+    # Outputs are written by the PredictionWriter callback (conf/trainer/inference.yaml)
+    trainer.predict(system, datamodule=datamodule, return_predictions=False)

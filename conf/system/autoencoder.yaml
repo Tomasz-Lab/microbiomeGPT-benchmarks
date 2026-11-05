@@ -1,0 +1,3 @@
+# Lightning system (training/validation/prediction steps); the runner passes the model, loss, optimizer and data schema
+_target_: gut_former.system.AutoEncoderSystem
+_partial_: true
