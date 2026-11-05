@@ -5,15 +5,29 @@ import hydra
 import lightning.pytorch as L
 import torch
 from torch import nn
-from torch.nn.functional import mse_loss
+from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
+
+from gut_former.schema import DataSchema
 
 log = logging.getLogger(__name__)
 
 
-class GutFormerModule(L.LightningModule):
+def _stage_metrics() -> MetricCollection:
+    # Each metric gets its own inputs, so no shared compute groups
+    return MetricCollection(
+        {
+            "loss": MeanMetric(),
+            "taxonomy_mse": MeanSquaredError(),
+            "pathways_mse": MeanSquaredError(),
+        },
+        compute_groups=False,
+    )
+
+
+class AutoEncoderSystem(L.LightningModule):
     """Training, validation and prediction steps for a taxonomy/pathways autoencoder.
 
-    `model_config` and `model_kwargs` are stored in the checkpoint so `load_module` can rebuild
+    `model_config` and `data_schema` are stored in the checkpoint so `load_system` can rebuild
     the network without the original data or Hydra config.
     """
 
@@ -23,14 +37,17 @@ class GutFormerModule(L.LightningModule):
         loss_fn: nn.Module | None = None,
         optimizer=None,
         model_config: dict | None = None,
-        model_kwargs: dict | None = None,
-        feature_names: dict[str, list[str]] | None = None,
+        data_schema: dict[str, list[str]] | None = None,
     ):
         super().__init__()
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer_factory = optimizer
         self.save_hyperparameters(ignore=["model", "loss_fn", "optimizer"])
+
+        # Separate attributes, not ModuleDict keys: "train" clashes with nn.Module.train
+        self.train_metrics = _stage_metrics()
+        self.val_metrics = _stage_metrics()
 
     def forward(self, xt, xp):
         # Dataset yields (taxonomy, pathways); the model takes (pathways, taxonomy)
@@ -42,16 +59,17 @@ class GutFormerModule(L.LightningModule):
         xt, xp = batch
         xt_pred, xp_pred, _ = self(xt, xp)
         loss = self.loss_fn(xt, xt_pred, xp, xp_pred)
+
+        # Metric objects accumulate over the epoch and sync across devices themselves;
+        # Lightning calls compute() and reset() at epoch end
+        metrics = self.train_metrics if stage == "train" else self.val_metrics
+        metrics["loss"].update(loss.detach(), weight=xt.size(0))
+        metrics["taxonomy_mse"].update(xt_pred, xt)
+        metrics["pathways_mse"].update(xp_pred, xp)
         self.log_dict(
-            {
-                f"{stage}_loss": loss,
-                f"{stage}_taxonomy_mse": mse_loss(xt_pred, xt),
-                f"{stage}_pathways_mse": mse_loss(xp_pred, xp),
-            },
+            {f"{stage}_{name}": metric for name, metric in metrics.items()},
             on_step=False,
             on_epoch=True,
-            sync_dist=True,
-            batch_size=xt.size(0),
             prog_bar=stage == "val",
         )
         return loss
@@ -77,39 +95,41 @@ class GutFormerModule(L.LightningModule):
         return self.optimizer_factory(self.parameters())
 
 
-def resolve_accelerator(accelerator: str) -> str:
-    """Map "auto" to CUDA or CPU; Lightning's own "auto" picks MPS, which lacks cdist backward."""
-    if accelerator != "auto":
-        return accelerator
-    return "cuda" if torch.cuda.is_available() else "cpu"
-
-
 def is_lightning_checkpoint(path: str | Path) -> bool:
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     return "hyper_parameters" in checkpoint
 
 
-def check_feature_names(expected: dict[str, list[str]], actual: dict[str, list[str]]):
-    for kind, names in expected.items():
-        if actual[kind] != names:
+def check_schema(expected: DataSchema, actual: DataSchema):
+    for modality, names in expected.feature_names.items():
+        actual_names = actual.feature_names.get(modality)
+        if actual_names is None:
+            raise ValueError(f"The data has no {modality} features, but the checkpoint needs them.")
+        if actual_names != names:
             raise ValueError(
-                f"{kind} features differ from the checkpoint: expected {len(names)} columns, "
-                f"got {len(actual[kind])} (names or order do not match)."
+                f"{modality} features differ from the checkpoint: expected {len(names)} columns, "
+                f"got {len(actual_names)} (names or order do not match)."
             )
 
 
-def verify_checkpoint_features(path: str | Path, feature_names: dict[str, list[str]]):
+def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     """Fail if the data columns differ from those the checkpoint was trained on."""
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    expected = checkpoint.get("hyper_parameters", {}).get("feature_names")
+    expected = checkpoint.get("hyper_parameters", {}).get("data_schema")
     if expected is None:
         log.warning(
-            "Checkpoint %s has no feature names (legacy format); "
+            "Checkpoint %s has no data schema (legacy format); "
             "feature names and order cannot be verified.",
             path,
         )
         return
-    check_feature_names(expected, feature_names)
+    check_schema(DataSchema.from_dict(expected), data_schema)
+
+
+def build_model(model_config, data_schema: DataSchema) -> nn.Module:
+    """Instantiate the model config with the data schema."""
+    # Not instantiate(..., data_schema=...): Hydra would merge the dataclass into the config
+    return hydra.utils.instantiate(model_config, _partial_=True)(data_schema=data_schema)
 
 
 def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
@@ -125,13 +145,15 @@ def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
     }
 
 
-def load_module(
-    path: str | Path, loss_fn: nn.Module | None = None, map_location="cpu"
-) -> GutFormerModule:
-    """Rebuild the network from the shape stored in a Lightning checkpoint and load its weights."""
+def load_system(
+    path: str | Path,
+    loss_fn: nn.Module | None = None,
+    map_location="cpu",
+    system_class: type[L.LightningModule] = AutoEncoderSystem,
+) -> L.LightningModule:
+    """Rebuild the network from the schema stored in a Lightning checkpoint and load its weights."""
     hparams = torch.load(path, map_location=map_location, weights_only=True)["hyper_parameters"]
-    model_builder = hydra.utils.instantiate(hparams["model_config"])
-    model = model_builder(**hparams["model_kwargs"])
-    return GutFormerModule.load_from_checkpoint(
+    model = build_model(hparams["model_config"], DataSchema.from_dict(hparams["data_schema"]))
+    return system_class.load_from_checkpoint(
         path, model=model, loss_fn=loss_fn, map_location=map_location
     )
