@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import hydra
 import numpy as np
@@ -17,18 +17,19 @@ from gut_former.utils.log_config import setup_logging
 from gut_former.utils.metrics import cos_sim, exp_var
 from gut_former.utils.metrics import l2norm as calc_l2norm
 from gut_former.utils.metrics import rss as calc_rss
+from gut_former.utils.types import Matrix
 
 log = logging.getLogger(__name__)
 
 
 def make_folds(
-    M: np.ndarray[tuple[int, int], np.dtype[np.float64]], h: int = 3
+    M: Matrix, h: int = 3
 ) -> Iterator[
     tuple[
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        Matrix,
+        Matrix,
+        Matrix,
+        Matrix,
     ]
 ]:
     """
@@ -108,16 +109,14 @@ def make_folds(
             yield A, B, C, D
 
 
-def shuffle_rows_and_cols(
-    X: np.ndarray[tuple[int, int], np.dtype[np.float64]], rng: np.random.Generator
-) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
+def shuffle_rows_and_cols(X: Matrix, rng: np.random.Generator) -> Matrix:
     """Randomly permute rows (samples) and columns (pathways) independently."""
     return rng.permutation(rng.permutation(X, axis=0), axis=1)
 
 
 def score(
-    true: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-    pred: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+    true: Matrix,
+    pred: Matrix,
 ) -> dict[str, float]:
     return {
         "evar": exp_var(true, pred),
@@ -134,11 +133,11 @@ def summarize_block_a(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def evaluate_signature(
-    A: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-    B: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-    C: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-    D: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-    params: Any,
+    A: Matrix,
+    B: Matrix,
+    C: Matrix,
+    D: Matrix,
+    params: dict[str, Any],
     signature: int,
 ) -> list[dict[str, float | int | str]]:
     """
@@ -210,6 +209,8 @@ def evaluate_signature(
     # Train on D only
     model = NMF(**{**params, "n_components": signature}).fit(D)
     W_d, H_d = model.W_train_, model.H_
+    assert W_d is not None
+    assert H_d is not None
 
     # B shares samples with A: B ≈ W_a @ H_d
     W_a = model.transform(B)
@@ -240,17 +241,17 @@ def run_bicv_task(cfg: DictConfig, **_: object) -> None:
     output_path.mkdir(parents=True, exist_ok=True)
 
     signatures = list(range(cfg.task.n_components_min, cfg.task.n_components_max + 1))
-    params = OmegaConf.to_container(cfg.model.parameters, resolve=True)
+    params = cast(dict[str, Any], OmegaConf.to_container(cfg.model.parameters, resolve=True))
     log.info("Signatures to test: %s", signatures)
 
     M = shuffle_rows_and_cols(X.values, np.random.default_rng(seed=cfg.task.seed))
 
     def process_task(
         fold_idx: int,
-        A: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        B: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        C: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        D: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        A: Matrix,
+        B: Matrix,
+        C: Matrix,
+        D: Matrix,
         signature: int,
     ) -> list[dict[str, float | int | str]]:
         rows = evaluate_signature(A, B, C, D, params, signature)
