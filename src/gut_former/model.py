@@ -56,7 +56,9 @@ class BacteriaModel(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 
-    def forward(self, pathways_tensor, bacteria_tensor):
+    def forward(
+        self, pathways_tensor: torch.Tensor, bacteria_tensor: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = pathways_tensor.size(0)
         num_pathways = pathways_tensor.size(1)
         num_bacteria = bacteria_tensor.size(1)

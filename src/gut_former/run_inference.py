@@ -10,8 +10,11 @@ from gut_former.utils.log_config import setup_logging
 log = logging.getLogger(__name__)
 
 
-def run_inference(cfg: DictConfig, **_):
+def run_inference(cfg: DictConfig, **_: object) -> None:
+    # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
+
+    log.info("Starting inference script..")
 
     if cfg.task.checkpoint_path is None:
         raise ValueError(

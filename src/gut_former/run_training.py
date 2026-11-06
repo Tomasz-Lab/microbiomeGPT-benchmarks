@@ -8,9 +8,18 @@ from gut_former.system import verify_checkpoint_schema
 from gut_former.utils.hydra_utils import cfg_to_plain_dict
 from gut_former.utils.log_config import setup_logging
 
+log = logging.getLogger(__name__)
 
-def run_training(cfg: DictConfig, **_):
+
+def run_training(cfg: DictConfig, **_: object) -> None:
+    # Setting up project
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
+
+    log.info("Starting training script..")
+
+    if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
+        raise ValueError("Set either task.resume_from or task.init_weights, not both.")
+
     L.seed_everything(cfg.task.seed, workers=True)
 
     datamodule = hydra.utils.instantiate(cfg.datamodule)

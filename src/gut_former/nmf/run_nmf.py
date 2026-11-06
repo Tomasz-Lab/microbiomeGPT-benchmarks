@@ -17,7 +17,12 @@ log = logging.getLogger(__name__)
 
 
 def load_data_nmf_csv(
-    data_path: str, metadata_path: str, kind: str, subset: str, pathways_multiplier: int, **_
+    data_path: str,
+    metadata_path: str,
+    kind: str,
+    subset: str,
+    pathways_multiplier: int,
+    **_: object,
 ) -> pd.DataFrame:
     """Load and preprocess input data based on data type."""
     df = pd.read_csv(data_path, index_col=0, low_memory=False).fillna(0).sort_index()
@@ -34,11 +39,11 @@ def load_data_nmf_csv(
     return df
 
 
-def load_data_nmf_db():
+def load_data_nmf_db() -> None:
     pass
 
 
-def run_nmf_task(cfg: DictConfig, **_):
+def run_nmf_task(cfg: DictConfig, **_: object) -> None:
     setup_logging()
 
     log.info("Starting NMF script..")
