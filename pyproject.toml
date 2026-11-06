@@ -79,3 +79,4 @@ check_untyped_defs = true
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
 tmp_path_retention_policy = "failed"
+markers = ["integration: runs a real short training"]
