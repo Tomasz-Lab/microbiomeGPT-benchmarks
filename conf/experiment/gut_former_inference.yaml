@@ -2,7 +2,6 @@
 
 defaults:
   - /task: run_gut_former_inference
-  - /model: gut_former
   - /system: autoencoder
   - /dataset: csv
   - /datamodule: bacteria_csv

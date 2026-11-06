@@ -18,3 +18,15 @@ def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
 def instantiate(config: DictConfig | dict) -> Any:
     """Build the object described by a config with a `_target_` key."""
     return hydra.utils.instantiate(config)
+
+
+def load_from_checkpoint(
+    config: DictConfig | dict, checkpoint_path: str, map_location: str = "cpu"
+) -> Any:
+    """Restore the class named by a config's `_target_` from a checkpoint.
+
+    The class rebuilds itself from the hyperparameters stored in the checkpoint, so only
+    `_target_` is read from the config.
+    """
+    target_class = hydra.utils.get_class(config["_target_"])
+    return target_class.load_from_checkpoint(checkpoint_path, map_location=map_location)
