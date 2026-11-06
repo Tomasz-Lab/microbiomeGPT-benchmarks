@@ -10,12 +10,3 @@ resume_from: null
 init_weights: null
 verbose: true
 
-optimizer:
-  _target_: torch.optim.Adam
-  _partial_: true
-  lr: 1.893292917167e-4
-  weight_decay: 0.001
-
-loss:
-  _target_: gut_former.loss.CompositeLoss
-  _partial_: false
