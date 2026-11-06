@@ -82,3 +82,4 @@ disable_error_code = ["import-untyped"]  # Third-party libraries lack type stubs
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
 tmp_path_retention_policy = "failed"
+markers = ["integration: runs a real short training"]

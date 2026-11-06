@@ -3,6 +3,7 @@ _partial_: true
 
 name: gut_former_inference
 
-# Lightning .ckpt, or a legacy .pt state_dict (model is then rebuilt from cfg.model and the data)
+# Lightning .ckpt from gut_former_training (best or last); the model is rebuilt from it
+# Legacy .pt state_dicts: use experiment=gut_former_inference_legacy
 checkpoint_path: null
 verbose: true
