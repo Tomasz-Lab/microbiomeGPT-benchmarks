@@ -126,3 +126,36 @@ def cfg_train(cfg_train_global, tmp_path) -> DictConfig:
     yield cfg
 
     GlobalHydra.instance().clear()
+
+
+@pytest.fixture(scope="session")
+def cfg_infer_global(tiny_dataset) -> DictConfig:
+    """The real gut_former_inference config; overrides only point it at the tiny data on CPU."""
+    with initialize_config_dir(config_dir=CONFIG_PATH, version_base=VERSION_BASE):
+        cfg = compose(
+            config_name=CONFIG_NAME,
+            return_hydra_config=True,
+            overrides=["experiment=gut_former_inference"],
+        )
+
+    with open_dict(cfg):
+        cfg.task.verbose = False
+        cfg.dataset.name = tiny_dataset.name
+        cfg.datamodule.data_dir = str(tiny_dataset.dir)
+        cfg.trainer.accelerator = "cpu"
+
+    return cfg
+
+
+@pytest.fixture
+def cfg_infer(cfg_infer_global, tmp_path) -> DictConfig:
+    """A per-test copy whose predictions go to tmp_path."""
+    cfg = copy.deepcopy(cfg_infer_global)
+
+    with open_dict(cfg):
+        # Read by ${hydra:runtime.output_dir} once the test calls HydraConfig().set_config(cfg)
+        cfg.hydra.runtime.output_dir = str(tmp_path)
+
+    yield cfg
+
+    GlobalHydra.instance().clear()
