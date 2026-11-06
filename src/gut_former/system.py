@@ -8,6 +8,7 @@ from torch import nn
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
 
 from gut_former.schema import DataSchema
+from gut_former.utils.hydra_utils import instantiate
 
 log = logging.getLogger(__name__)
 
@@ -33,17 +34,16 @@ class AutoEncoderSystem(L.LightningModule):
 
     def __init__(
         self,
-        model: nn.Module,
-        loss_fn: nn.Module | None = None,
-        optimizer=None,
-        model_config: dict | None = None,
-        data_schema: dict[str, list[str]] | None = None,
+        model_schema: dict,
+        loss: dict | None = None,
+        optimizer: dict | None = None,
     ):
         super().__init__()
-        self.model = model
-        self.loss_fn = loss_fn
-        self.optimizer_factory = optimizer
-        self.save_hyperparameters(ignore=["model", "loss_fn", "optimizer"])
+        self.save_hyperparameters(logger=False)
+
+        self.model = instantiate(model_schema)
+        self.loss_fn = instantiate(loss)
+        self.optimizer_fn = instantiate(optimizer)
 
         # Separate attributes, not ModuleDict keys: "train" clashes with nn.Module.train
         self.train_metrics = _stage_metrics()
@@ -90,9 +90,9 @@ class AutoEncoderSystem(L.LightningModule):
         }
 
     def configure_optimizers(self):
-        if self.optimizer_factory is None:
+        if self.optimizer_fn is None:
             raise ValueError("An optimizer is required for training.")
-        return self.optimizer_factory(self.parameters())
+        return self.optimizer_fn(self.parameters())
 
 
 def is_lightning_checkpoint(path: str | Path) -> bool:
