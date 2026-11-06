@@ -39,7 +39,7 @@ class AutoEncoderSystem(L.LightningModule):
         optimizer: dict | None = None,
     ):
         super().__init__()
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(logger=False)  # D: 0001
 
         self.model = instantiate(model_schema)
         self.loss_fn = instantiate(loss)

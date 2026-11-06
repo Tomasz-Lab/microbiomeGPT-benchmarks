@@ -14,6 +14,7 @@ profiler: null
 callbacks:
   - _target_: gut_former.callbacks.RunLogger
 
+  # D:0001
   - _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: ${hydra:runtime.output_dir}/checkpoints
     filename: "best"
@@ -23,6 +24,7 @@ callbacks:
     save_weights_only: true
     enable_version_counter: false
 
+  # D:0001
   - _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: ${hydra:runtime.output_dir}/checkpoints
     filename: "last"

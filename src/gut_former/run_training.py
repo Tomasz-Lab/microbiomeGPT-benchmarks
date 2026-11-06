@@ -32,6 +32,8 @@ def run_training(cfg: DictConfig, **_):
 
     model_schema = cfg_to_plain_dict(cfg.model)
     model_schema["data_schema"] = data_schema.to_config()
+
+    # D: 0001
     system = hydra.utils.instantiate(cfg.system)(
         model_schema=model_schema,
     )
