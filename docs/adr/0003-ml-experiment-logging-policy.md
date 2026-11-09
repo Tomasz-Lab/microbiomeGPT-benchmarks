@@ -14,9 +14,22 @@ The main goals of tracking are to:
 ## Decision
 
 ### 1. Run identification
-- project, run name and group (e.g. benchmark name or model family)
-- tags (e.g. `baseline`)
-- short description of the run's purpose
+- project: the W&B project the run belongs to
+- run name:
+    - a label for a single run, shown in the run list and chart legends
+    - short and easy to read
+    - convention: `<model-name>__<dataset>__<%m%d-%H%M%S>`, e.g. `gut_former__sample__1109-141437`
+    - `__` separates the parts, because model and dataset names may contain a single `_`
+    - not used for filtering (use tags and config) and not guaranteed to be unique (the run ID is)
+- tags, for quick filtering:
+    - model name
+    - model version
+    - dataset name
+    - run purpose: `debug`, `test-run`, `baseline`, etc.
+- job type: `train` or `inference`
+- group: set when runs belong together, e.g. the jobs of one Hydra multirun, so they can be
+  compared side by side
+- notes: a short description of the run's purpose
 
 ### 2. Code
 - git commit hash
