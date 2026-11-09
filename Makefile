@@ -71,7 +71,11 @@ jupyter:
 # Every run keeps its own wandb/ directory inside the Hydra run directory, so plain
 # `wandb sync` (which only looks in ./wandb) finds nothing. This finds every wandb/ directory
 # under the output dirs from .env and syncs them. Already synced and online runs are skipped. ~ Fasamik39
+# WANDB_DIR sends the CLI's own wandb/ directory and logs to a temp dir instead of the repo root.
+WANDB_SYNC_DIR = $${TMPDIR:-/tmp}/gut-former-wandb-sync
 WANDB_SYNC = set -a; [ -f .env ] && . ./.env; set +a; \
+	export WANDB_DIR="$(WANDB_SYNC_DIR)"; mkdir -p "$$WANDB_DIR"; \
+	echo "W&B CLI logs: $$WANDB_DIR/wandb"; \
 	if [ -z "$$OUTPUT_HYDRA" ]; then echo "OUTPUT_HYDRA is not set (see .env.example)"; exit 1; fi; \
 	for dir in "$$OUTPUT_HYDRA" "$$OUTPUT_MULTIRAN_HYDRA"; do \
 		[ -n "$$dir" ] && [ -d "$$dir" ] || continue; \
