@@ -34,7 +34,6 @@ callbacks:
     enable_version_counter: false
 
 
-# lightning_logs/version_0/metrics.csv is the run's metrics log
 logger:
   - _target_: lightning.pytorch.loggers.WandbLogger
     project: "microbiomeGPT"            
@@ -43,3 +42,10 @@ logger:
     save_dir: "${hydra:runtime.output_dir}"
     log_model: false # don't send data to WB cloud anytime (even after sync)
     offline: false # set true on VM that do not have acccess to internet or if you manually want to sync logs later
+    settings: 
+      # wandb defualt assumes that all runs are in single wandb directory, 
+      # but beacause we are using hydra, each run is in a different directory,
+      # so symlink (for a latest run in project) for us is not needed and 
+      # we can set it to false to avoid confusion ~ Fasamik39
+      _target_: wandb.Settings
+      symlink: false
