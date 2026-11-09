@@ -10,3 +10,4 @@ defaults:
 
 experiment:
   name: gut_former_inference
+  purpose: inference

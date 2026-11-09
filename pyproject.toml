@@ -24,6 +24,7 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "lightning>=2.6.6",
     "wandb>=0.31.0",
+    "hydra-submitit-launcher>=1.2.0",
 ]
 
 [project.scripts]

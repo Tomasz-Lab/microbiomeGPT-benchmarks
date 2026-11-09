@@ -7,7 +7,14 @@ defaults:
   - /dataset: csv
   - /datamodule: bacteria_csv
   - /trainer: default
+  # every multirun job in its own process, so each gets its own W&B run (ADR 0005)
+  - override /hydra/launcher: submitit_local
   - _self_
 
 experiment:
   name: gut_former_training
+  purpose: debug
+
+hydra:
+  launcher:
+    timeout_min: 1440

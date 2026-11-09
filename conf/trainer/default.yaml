@@ -42,6 +42,15 @@ logger:
     save_dir: "${hydra:runtime.output_dir}"
     log_model: false # don't send data to WB cloud anytime (even after sync)
     offline: false # set true on VM that do not have acccess to internet or if you manually want to sync logs later
+    tags:
+      - "${model.name}"     # eg. gut_former
+      - "${model.model_version}"       # eg. v1-0-0
+      - "${dataset.name}"              # eg. gutmap
+      - "${experiment.purpose}"        # debug / test-run / baseline / production
+    job_type: train
+    group: null
+    notes: null
+    
     settings: 
       # wandb defualt assumes that all runs are in single wandb directory, 
       # but beacause we are using hydra, each run is in a different directory,
