@@ -1,6 +1,6 @@
 # 0002. ML experiment tracking
 
-Status: Proposed
+Status: Accepted
 Date: 2026-11-09
 
 ## Context
