@@ -1,0 +1,15 @@
+# Lightning system (training/validation/prediction steps); the runner passes the model, loss, optimizer and data schema
+_target_: gut_former.system.AutoEncoderSystem
+_partial_: true
+_convert_: all # D: 0001
+_recursive_: false # D: 0001
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1.893292917167e-4
+  weight_decay: 0.001
+
+loss:
+  _target_: gut_former.loss.CompositeLoss
+  _partial_: false

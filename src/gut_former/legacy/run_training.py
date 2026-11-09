@@ -11,9 +11,11 @@ from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
+from gut_former.schema import DataSchema
+from gut_former.system import build_model
 from gut_former.utils.data_prep import train_val_split
 from gut_former.utils.log_config import setup_logging
-from gut_former.utils.project_paths import find_data_path
+from settings.paths import DATASET_DIR
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ def run_training(cfg: DictConfig, **_):
 
     # Loading & Preparing Data
     # To do: refactor later when we will be dealing with task for dataload refacotr
-    data_path = find_data_path()
+    data_path = DATASET_DIR
     Xt_df = (
         pd.read_csv(f"{data_path}/taxonomy_{cfg.dataset.name}.csv", index_col=[0], low_memory=False)
         .fillna(0)
@@ -58,14 +60,8 @@ def run_training(cfg: DictConfig, **_):
 
     # Defining Model
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_builder = hydra.utils.instantiate(
-        cfg.model,
-    )
-
-    model = model_builder(
-        num_pathways=Xp_df.shape[1],
-        num_bacteria=Xt_df.shape[1],
-    ).to(DEVICE)
+    data_schema = DataSchema({"taxonomy": tuple(Xt_df.columns), "pathways": tuple(Xp_df.columns)})
+    model = build_model(cfg.model, data_schema).to(DEVICE)
 
     optimizer_fn = hydra.utils.instantiate(cfg.task.optimizer)
     optimizer = optimizer_fn(model.parameters())

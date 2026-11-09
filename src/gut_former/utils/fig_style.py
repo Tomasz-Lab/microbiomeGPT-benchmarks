@@ -5,7 +5,7 @@ import seaborn as sns
 def apply_style(
     font_family: str = "DejaVu Sans",
     base_font_size: int = 12,
-    style="whitegrid",
+    style: str = "whitegrid",
 ) -> None:
     rc = {
         "font.family": font_family,

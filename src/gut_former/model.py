@@ -1,10 +1,14 @@
 import torch
 from torch import nn
 
+from gut_former.schema import DataSchema
+
 
 class BacteriaModel(nn.Module):
-    def __init__(self, num_pathways, num_bacteria, embedding_dim, latent_size, **_):
+    def __init__(self, data_schema: DataSchema, embedding_dim, latent_size, **_):
         super().__init__()
+        _validate_data_schema(data_schema)
+        num_pathways, num_bacteria = _get_input_dimensions(data_schema)
 
         self.embedding_dim = embedding_dim
         self.latent_size = latent_size
@@ -52,7 +56,9 @@ class BacteriaModel(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 
-    def forward(self, pathways_tensor, bacteria_tensor):
+    def forward(
+        self, pathways_tensor: torch.Tensor, bacteria_tensor: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = pathways_tensor.size(0)
         num_pathways = pathways_tensor.size(1)
         num_bacteria = bacteria_tensor.size(1)
@@ -108,3 +114,17 @@ class BacteriaModel(nn.Module):
         bacteria_output_transformed = self.output_transform(bacteria_output)
 
         return bacteria_output_transformed, pathways_output_transformed, latent
+
+
+def _validate_data_schema(data_schema: DataSchema) -> None:
+    required = {"taxonomy", "pathways"}
+    missing = required - data_schema.feature_names.keys()
+    if missing:
+        raise ValueError(f"BacteriaModel requires modalities: {sorted(missing)}")
+
+
+def _get_input_dimensions(data_schema: DataSchema) -> tuple[int, int]:
+    return (
+        len(data_schema.feature_names["pathways"]),
+        len(data_schema.feature_names["taxonomy"]),
+    )

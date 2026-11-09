@@ -47,8 +47,8 @@ dev = [
     "ruff (>=0.14.0,<0.15.0)",
     "mypy (>=1.19.0,<2.0.0)",
     "jupyter (>=1.1.0,<2.0.0)",
-    "ipykernel (>=7.1.0,<8.0.0)"
-,
+    "ipykernel (>=7.1.0,<8.0.0)",
+    "pytest>=9.2.0,<10.0.0",
 ]
 
 [tool.ruff]
@@ -75,3 +75,12 @@ warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+exclude = "^tests/"
+explicit_package_bases = true
+disable_error_code = ["import-untyped"]  # Third-party libraries lack type stubs.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+tmp_path_retention_policy = "failed"
+markers = ["integration: runs a real short training"]

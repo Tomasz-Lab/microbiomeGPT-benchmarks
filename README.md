@@ -47,6 +47,10 @@ Execute commands or scripts directly within the project's environment without ma
 source .venv/bin/activate
 ```
 
+### 🧪 Tests
+
+Run all tests with `uv run pytest`, or a specific test file with `uv run pytest tests/nmf/test_bicv.py`.
+
 ## 📂 Data
 
 Place input files in the `data/` directory:
@@ -82,8 +86,8 @@ The default experiment is `nmf_pathways`. Available experiments are:
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups (training also composes
-`trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
+Experiments compose the `task`, `model`, and `dataset` config groups (the GUT-FORMer experiments
+also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
@@ -99,9 +103,20 @@ configuration/log files under
 ## 🧠 Model
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
-`GutFormerModule` (`src/gut_former/lit_module.py`) holds the training, validation and prediction
+`AutoEncoderSystem` (`src/gut_former/system.py`) holds the training, validation and prediction
 steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
 can be used directly from notebooks or HPC scripts without Hydra.
+
+After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.py`) with the
+feature names of each modality. `BacteriaModel` takes the schema and reads its input sizes from
+it, so the runners don't pass data dimensions to the model.
+
+The Lightning system (the `LightningModule`, named "system" to avoid confusing it with the model,
+as in the [Lightning style guide](https://lightning.ai/docs/pytorch/stable/starter/style_guide.html))
+is chosen in config, like the model: `conf/system/autoencoder.yaml` points to `AutoEncoderSystem`.
+To try another training system, add a config to `conf/system/` and select it with
+`system=<name>`; the system must accept the same constructor arguments as `AutoEncoderSystem`
+(`model`, `loss_fn`, `optimizer`, `model_config`, `data_schema`).
 
 ### Train from scratch
 
@@ -118,9 +133,11 @@ Training settings are supplied as Hydra overrides:
 |---|---|---|
 | `dataset.name` | `sample` | Dataset name |
 | `trainer.max_epochs` | `55` | Number of training epochs |
-| `trainer.accelerator` | `auto` | `auto` (CUDA if available, else CPU), `cpu`, `cuda`/`gpu` |
+| `trainer.accelerator` | `auto` | `auto` (Lightning picks CUDA, MPS or CPU), `cpu`, `cuda`/`gpu`, `mps` |
 | `trainer.devices` | `auto` | Number of devices |
-| `task.batch_size` | `16` | Batch size |
+| `trainer.profiler` | `null` | Profiler: `simple`, `advanced` or `pytorch` (off by default) |
+| `datamodule.batch_size` | `16` | Batch size |
+| `datamodule.val_size` | `0.1` | Fraction of samples held out for validation |
 | `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
 | `task.seed` | `0` | Random seed |
 | `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
@@ -130,13 +147,16 @@ Training settings are supplied as Hydra overrides:
 
 Outputs in the Hydra run directory:
 
-- `{date}_{dataset}_training_stats.csv` — per-epoch metrics (same columns as before; `test_*`
-  columns hold the held-out validation split)
+- `lightning_logs/version_0/metrics.csv` — every metric the model logs (`train_*` and `val_*`),
+  written by Lightning's `CSVLogger`. Training and validation values are on separate rows; use
+  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch. The legacy scripts write
+  `{date}_{dataset}_training_stats.csv` instead, with the validation columns named `test_*`.
+- `lightning_logs/version_0/hparams.yaml` — the run's hyperparameters
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
-- `lightning_logs/` — Lightning's CSV logs and hyperparameters
 
-On Apple Silicon `auto` uses the CPU: the loss uses `torch.cdist`, whose backward pass is not
-implemented for MPS.
+On Apple Silicon `auto` selects MPS, where training fails: the loss uses `torch.cdist`, whose
+backward pass is not implemented for MPS. Train there with `trainer.accelerator=cpu`; inference
+has no backward pass and runs on MPS.
 
 ### Resume and fine-tuning
 
@@ -149,6 +169,14 @@ uv run python src/gut_former/main.py \
   trainer.max_epochs=100 \
   task.resume_from=/path/to/checkpoints/last.ckpt
 ```
+
+The resumed run is a new Hydra run, so its `metrics.csv` contains only the epochs trained after
+resuming; the earlier epochs stay in the original run's directory.
+
+Checkpoints, however, keep going in the folder of the checkpoint you resume from, so the best
+checkpoint is chosen across all epochs, before and after resuming. Resuming from an older
+checkpoint of a finished run therefore continues that run and overwrites its `last.ckpt`. To
+branch off instead, copy the checkpoint to a new folder first.
 
 Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
 
@@ -175,12 +203,18 @@ uv run python src/gut_former/main.py \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
 
-A Lightning checkpoint stores the model shape and feature names, so inference fails early if the
-dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
+A Lightning checkpoint stores the data schema (feature names per modality), so inference fails
+early if the dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
 rebuilt from `model.*` and the dataset, without that check.
 
+The inference trainer comes from `conf/trainer/inference.yaml`; override it the same way, e.g.
+`trainer.accelerator=cpu`.
+
 Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
-`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory.
+`pred_pathways_{dataset}.csv`) are saved in the Hydra run directory by the `PredictionWriter`
+callback. Its `filenames` setting in `conf/trainer/inference.yaml` maps each model output to a
+file: modality outputs take the dataset's feature names as columns, and other outputs (the latent
+space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
 
 ### Legacy scripts
 

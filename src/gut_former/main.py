@@ -2,10 +2,12 @@ import hydra
 from dotenv import load_dotenv
 from omegaconf import DictConfig
 
+from settings.hydra import CONFIG_NAME, CONFIG_PATH, VERSION_BASE
+
 load_dotenv()
 
 
-@hydra.main(version_base="1.3", config_path="../../conf", config_name="config")
+@hydra.main(version_base=VERSION_BASE, config_path=CONFIG_PATH, config_name=CONFIG_NAME)
 def main(cfg: DictConfig):
     task_func = hydra.utils.instantiate(cfg.task)
     task_func(cfg)

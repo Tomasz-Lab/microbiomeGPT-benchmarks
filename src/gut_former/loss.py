@@ -4,17 +4,19 @@ from torch.nn.functional import mse_loss
 
 
 class CompositeLoss(nn.Module):
-    def __init__(self, distance_weight: float = 0.1, variance_weight: float = 0.1):
+    def __init__(self, distance_weight: float = 0.1, variance_weight: float = 0.1) -> None:
         super().__init__()
         self.distance_weight = distance_weight
         self.variance_weight = variance_weight
 
-    def forward(self, xt, xt_pred, xp, xp_pred):
+    def forward(
+        self, xt: torch.Tensor, xt_pred: torch.Tensor, xp: torch.Tensor, xp_pred: torch.Tensor
+    ) -> torch.Tensor:
         # Reconstruction Loss
         recon = mse_loss(xt_pred, xt) + mse_loss(xp_pred, xp)
 
         # Distance Loss
-        def dist_mtx(x):
+        def dist_mtx(x: torch.Tensor) -> torch.Tensor:
             return torch.cdist(x.squeeze(-1), x.squeeze(-1))
 
         t_loss = mse_loss(dist_mtx(xt_pred), dist_mtx(xt))

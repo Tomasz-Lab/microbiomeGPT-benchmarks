@@ -3,7 +3,9 @@
 defaults:
   - /task: run_gut_former_training
   - /model: gut_former
+  - /system: autoencoder
   - /dataset: csv
+  - /datamodule: bacteria_csv
   - /trainer: default
   - _self_
 

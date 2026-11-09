@@ -6,7 +6,8 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from gut_former.dataset import BacteriaDataset
-from gut_former.utils.project_paths import find_data_path
+from gut_former.schema import DataSchema
+from settings.paths import DATASET_DIR
 
 
 def load_frames(
@@ -50,7 +51,7 @@ class BacteriaDataModule(L.LightningDataModule):
         self.taxa_multiplier = taxa_multiplier
         self.pathways_multiplier = pathways_multiplier
         self.batch_size = batch_size
-        self.data_dir = data_dir if data_dir is not None else find_data_path()
+        self.data_dir = data_dir if data_dir is not None else DATASET_DIR
         self.val_size = val_size
         self.seed = seed
 
@@ -91,19 +92,17 @@ class BacteriaDataModule(L.LightningDataModule):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
 
     @property
-    def num_bacteria(self) -> int:
-        return int(self.taxonomy.shape[1])
+    def predict_index(self) -> pd.Index:
+        """Sample IDs in the order of predict_dataloader."""
+        return self.taxonomy.index
 
-    @property
-    def num_pathways(self) -> int:
-        return int(self.pathways.shape[1])
-
-    @property
-    def feature_names(self) -> dict[str, list[str]]:
-        return {
-            "taxonomy": self.taxonomy.columns.tolist(),
-            "pathways": self.pathways.columns.tolist(),
-        }
+    def data_schema(self) -> DataSchema:
+        return DataSchema(
+            {
+                "taxonomy": tuple(self.taxonomy.columns),
+                "pathways": tuple(self.pathways.columns),
+            }
+        )
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)

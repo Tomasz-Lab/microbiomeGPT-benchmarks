@@ -1,6 +1,6 @@
 parameters:
   n_components: 8
-  n_runs: 10
+  n_runs: 50
   init: nndsvdar
   solver: mu
   beta_loss: kullback-leibler
