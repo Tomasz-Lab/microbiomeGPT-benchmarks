@@ -38,7 +38,7 @@ logger:
   - _target_: lightning.pytorch.loggers.WandbLogger
     project: "microbiomeGPT"            
     entity: "sano-centre-for-computational-medicine-microbiome-gpt"
-    name: "run-${now:%Y-%m-%d_%H-%M-%S}"
+    name: "${model.name}__${dataset.name}__${now:%Y-%m-%d_%H-%M-%S}"
     save_dir: "${hydra:runtime.output_dir}"
     log_model: false # don't send data to WB cloud anytime (even after sync)
     offline: false # set true on VM that do not have acccess to internet or if you manually want to sync logs later
