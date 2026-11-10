@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pytest
@@ -107,3 +108,20 @@ def test_checkpoint_contains_model_schema(cfg_train, tmp_path, filename):
 
     # Then
     assert "model_schema" in checkpoint["hyper_parameters"]
+
+
+def test_train_restores_from_resume_from_checkpoint(cfg_train, tmp_path, caplog):
+    # Given
+    HydraConfig().set_config(cfg_train)
+    run_training(cfg_train)
+    checkpoint_path = str(tmp_path / "checkpoints" / "last.ckpt")
+    cfg_train.task.resume_from = checkpoint_path
+    cfg_train.task.verbose = True
+    cfg_train.trainer.max_epochs = 2
+
+    # When
+    with caplog.at_level(logging.INFO):
+        run_training(cfg_train)
+
+    # Then
+    assert f"Restoring states from the checkpoint path at {checkpoint_path}" in caplog.text
