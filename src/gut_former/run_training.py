@@ -5,6 +5,7 @@ import lightning.pytorch as L
 from omegaconf import DictConfig
 
 from gut_former.system import verify_checkpoint_schema
+from gut_former.utils.checkpoints import copy_checkpoints_to_this_run
 from gut_former.utils.hydra_utils import cfg_to_plain_dict
 from gut_former.utils.log_config import setup_logging
 
@@ -35,4 +36,10 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     )
 
     trainer = hydra.utils.instantiate(cfg.trainer)
-    trainer.fit(system, datamodule=datamodule, ckpt_path=cfg.task.resume_from)
+
+    resume_from = cfg.task.resume_from
+    if resume_from is not None:
+        resume_from = copy_checkpoints_to_this_run(trainer, resume_from)
+        log.info("Resuming from a copy of %s: %s", cfg.task.resume_from, resume_from)
+
+    trainer.fit(system, datamodule=datamodule, ckpt_path=resume_from)

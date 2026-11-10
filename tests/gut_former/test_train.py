@@ -1,9 +1,12 @@
+import hashlib
 import logging
 import os
+import warnings
 
 import pytest
 import torch
 from hydra.core.hydra_config import HydraConfig
+from omegaconf import read_write
 
 from gut_former.run_training import run_training
 
@@ -115,6 +118,10 @@ def test_train_restores_from_resume_from_checkpoint(cfg_train, tmp_path, caplog)
     HydraConfig().set_config(cfg_train)
     run_training(cfg_train)
     checkpoint_path = str(tmp_path / "checkpoints" / "last.ckpt")
+    # Each Hydra run gets a new output dir
+    with read_write(cfg_train.hydra):
+        cfg_train.hydra.runtime.output_dir = str(tmp_path / "resumed")
+    HydraConfig().set_config(cfg_train)
     cfg_train.task.resume_from = checkpoint_path
     cfg_train.task.verbose = True
     cfg_train.trainer.max_epochs = 2
@@ -124,4 +131,56 @@ def test_train_restores_from_resume_from_checkpoint(cfg_train, tmp_path, caplog)
         run_training(cfg_train)
 
     # Then
-    assert f"Restoring states from the checkpoint path at {checkpoint_path}" in caplog.text
+    copied_path = os.path.realpath(tmp_path / "resumed" / "checkpoints" / "last.ckpt")
+    assert f"Restoring states from the checkpoint path at {copied_path}" in caplog.text
+
+
+def test_resume_into_the_resumed_run_folder_fails(cfg_train, tmp_path):
+    # Given
+    HydraConfig().set_config(cfg_train)
+    run_training(cfg_train)
+    cfg_train.task.resume_from = str(tmp_path / "checkpoints" / "last.ckpt")
+
+    # When / Then
+    with pytest.raises(ValueError, match="resume in a new output folder"):
+        run_training(cfg_train)
+
+
+def checkpoint_hashes(checkpoint_dir):
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in checkpoint_dir.iterdir()
+    }
+
+
+def test_resume_keeps_best_score_and_leaves_resumed_run_untouched(cfg_train, tmp_path):
+    # Given
+    first_run_dir = tmp_path / "first_run"
+    second_run_dir = tmp_path / "second_run"
+    with read_write(cfg_train.hydra):
+        cfg_train.hydra.runtime.output_dir = str(first_run_dir)
+    HydraConfig().set_config(cfg_train)
+    run_training(cfg_train)
+    first_run_hashes = checkpoint_hashes(first_run_dir / "checkpoints")
+
+    # Each Hydra run gets a new output dir
+    with read_write(cfg_train.hydra):
+        cfg_train.hydra.runtime.output_dir = str(second_run_dir)
+    HydraConfig().set_config(cfg_train)
+    cfg_train.task.resume_from = str(first_run_dir / "checkpoints" / "last.ckpt")
+    cfg_train.trainer.max_epochs = 2
+
+    # When
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        run_training(cfg_train)
+
+    # Then
+    assert not [w for w in caught if "dirpath has changed" in str(w.message)]
+    assert checkpoint_hashes(first_run_dir / "checkpoints") == first_run_hashes
+    assert sorted(os.listdir(second_run_dir / "checkpoints")) == ["best.ckpt", "last.ckpt"]
+    checkpoint = torch.load(
+        second_run_dir / "checkpoints" / "last.ckpt", map_location="cpu", weights_only=False
+    )
+    assert checkpoint["epoch"] == 1
+    assert str(first_run_dir) not in str(checkpoint["callbacks"])
