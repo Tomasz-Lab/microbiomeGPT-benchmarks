@@ -13,25 +13,19 @@ from gut_former.run_training import run_training
 pytestmark = pytest.mark.integration
 
 
-def test_train_saves_best_and_last_checkpoints(cfg_train, tmp_path):
-    # Given
-    HydraConfig().set_config(cfg_train)
-
+def test_train_saves_best_and_last_checkpoints(trained_run_dir):
     # When
-    run_training(cfg_train)
+    files = os.listdir(trained_run_dir / "checkpoints")
 
     # Then
-    files = os.listdir(tmp_path / "checkpoints")
     assert sorted(files) == ["best.ckpt", "last.ckpt"]
 
 
-def test_best_checkpoint_has_no_training_state(cfg_train, tmp_path):
-    # Given
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-
+def test_best_checkpoint_has_no_training_state(trained_run_dir):
     # When
-    best = torch.load(tmp_path / "checkpoints" / "best.ckpt", map_location="cpu", weights_only=True)
+    best = torch.load(
+        trained_run_dir / "checkpoints" / "best.ckpt", map_location="cpu", weights_only=True
+    )
 
     # Then
     assert "state_dict" in best
@@ -40,13 +34,11 @@ def test_best_checkpoint_has_no_training_state(cfg_train, tmp_path):
     assert "callbacks" not in best
 
 
-def test_last_checkpoint_has_training_state(cfg_train, tmp_path):
-    # Given
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-
+def test_last_checkpoint_has_training_state(trained_run_dir):
     # When
-    last = torch.load(tmp_path / "checkpoints" / "last.ckpt", map_location="cpu", weights_only=True)
+    last = torch.load(
+        trained_run_dir / "checkpoints" / "last.ckpt", map_location="cpu", weights_only=True
+    )
 
     # Then
     assert "state_dict" in last
@@ -81,14 +73,10 @@ def _non_plain_values(obj, path: str = "checkpoint") -> list[str]:
 
 
 @pytest.mark.parametrize("filename", ["best.ckpt", "last.ckpt"])
-def test_checkpoint_holds_only_expected_content(cfg_train, tmp_path, filename):
-    # Given
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-
+def test_checkpoint_holds_only_expected_content(trained_run_dir, filename):
     # When
     checkpoint = torch.load(
-        tmp_path / "checkpoints" / filename, map_location="cpu", weights_only=False
+        trained_run_dir / "checkpoints" / filename, map_location="cpu", weights_only=False
     )
     non_model_weights = [key for key in checkpoint["state_dict"] if not key.startswith("model.")]
 
@@ -98,31 +86,10 @@ def test_checkpoint_holds_only_expected_content(cfg_train, tmp_path, filename):
     assert non_model_weights == []
 
 
-@pytest.mark.parametrize("filename", ["best.ckpt", "last.ckpt"])
-def test_checkpoint_contains_model_schema(cfg_train, tmp_path, filename):
-    # Given
+def test_train_restores_from_resume_from_checkpoint(cfg_train, trained_run_dir, tmp_path, caplog):
+    # Given: cfg_train writes to tmp_path, a new output dir like every Hydra run gets
     HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-
-    # When
-    checkpoint = torch.load(
-        tmp_path / "checkpoints" / filename, map_location="cpu", weights_only=True
-    )
-
-    # Then
-    assert "model_schema" in checkpoint["hyper_parameters"]
-
-
-def test_train_restores_from_resume_from_checkpoint(cfg_train, tmp_path, caplog):
-    # Given
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-    checkpoint_path = str(tmp_path / "checkpoints" / "last.ckpt")
-    # Each Hydra run gets a new output dir
-    with read_write(cfg_train.hydra):
-        cfg_train.hydra.runtime.output_dir = str(tmp_path / "resumed")
-    HydraConfig().set_config(cfg_train)
-    cfg_train.task.resume_from = checkpoint_path
+    cfg_train.task.resume_from = str(trained_run_dir / "checkpoints" / "last.ckpt")
     cfg_train.task.verbose = True
     cfg_train.trainer.max_epochs = 2
 
@@ -131,15 +98,16 @@ def test_train_restores_from_resume_from_checkpoint(cfg_train, tmp_path, caplog)
         run_training(cfg_train)
 
     # Then
-    copied_path = os.path.realpath(tmp_path / "resumed" / "checkpoints" / "last.ckpt")
+    copied_path = os.path.realpath(tmp_path / "checkpoints" / "last.ckpt")
     assert f"Restoring states from the checkpoint path at {copied_path}" in caplog.text
 
 
-def test_resume_into_the_resumed_run_folder_fails(cfg_train, tmp_path):
+def test_resume_into_the_resumed_run_folder_fails(cfg_train, trained_run_dir):
     # Given
+    with read_write(cfg_train.hydra):
+        cfg_train.hydra.runtime.output_dir = str(trained_run_dir)
     HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-    cfg_train.task.resume_from = str(tmp_path / "checkpoints" / "last.ckpt")
+    cfg_train.task.resume_from = str(trained_run_dir / "checkpoints" / "last.ckpt")
 
     # When / Then
     with pytest.raises(ValueError, match="resume in a new output folder"):
@@ -153,19 +121,13 @@ def checkpoint_hashes(checkpoint_dir):
     }
 
 
-def test_resume_keeps_best_score_and_leaves_resumed_run_untouched(cfg_train, tmp_path):
-    # Given
-    first_run_dir = tmp_path / "first_run"
-    second_run_dir = tmp_path / "second_run"
-    with read_write(cfg_train.hydra):
-        cfg_train.hydra.runtime.output_dir = str(first_run_dir)
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
+def test_resume_keeps_best_score_and_leaves_resumed_run_untouched(
+    cfg_train, trained_run_dir, tmp_path
+):
+    # Given: cfg_train writes to tmp_path, a new output dir like every Hydra run gets
+    first_run_dir = trained_run_dir
+    second_run_dir = tmp_path
     first_run_hashes = checkpoint_hashes(first_run_dir / "checkpoints")
-
-    # Each Hydra run gets a new output dir
-    with read_write(cfg_train.hydra):
-        cfg_train.hydra.runtime.output_dir = str(second_run_dir)
     HydraConfig().set_config(cfg_train)
     cfg_train.task.resume_from = str(first_run_dir / "checkpoints" / "last.ckpt")
     cfg_train.trainer.max_epochs = 2

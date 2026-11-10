@@ -6,18 +6,15 @@ import torch
 from hydra.core.hydra_config import HydraConfig
 
 from gut_former.run_inference import run_inference
-from gut_former.run_training import run_training
 
 pytestmark = pytest.mark.integration
 
 
 def test_inference_writes_predictions_from_trained_checkpoint(
-    cfg_train, cfg_infer, tmp_path, tiny_dataset
+    cfg_infer, trained_run_dir, tmp_path, tiny_dataset
 ):
     # Given
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-    cfg_infer.task.checkpoint_path = str(tmp_path / "checkpoints" / "best.ckpt")
+    cfg_infer.task.checkpoint_path = str(trained_run_dir / "checkpoints" / "best.ckpt")
     HydraConfig().set_config(cfg_infer)
 
     # When
@@ -59,12 +56,10 @@ def test_inference_without_prediction_writer_fails_before_loading(cfg_infer, tmp
 
 
 def test_inference_refuses_checkpoint_with_disallowed_target(
-    cfg_train, cfg_infer, tmp_path, caplog
+    cfg_infer, trained_run_dir, tmp_path, caplog
 ):
-    # Given: a trained checkpoint whose loss config was replaced with an arbitrary call
-    HydraConfig().set_config(cfg_train)
-    run_training(cfg_train)
-    checkpoint_path = tmp_path / "checkpoints" / "best.ckpt"
+    # Given: a copy of the trained checkpoint whose loss config was replaced with an arbitrary call
+    checkpoint_path = trained_run_dir / "checkpoints" / "best.ckpt"
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     checkpoint["hyper_parameters"]["loss"] = {"_target_": "os.system", "command": "echo pwned"}
     tampered_path = tmp_path / "tampered.ckpt"
