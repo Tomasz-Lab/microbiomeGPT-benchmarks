@@ -58,3 +58,7 @@ logger:
       # we can set it to false to avoid confusion ~ Fasamik39
       _target_: wandb.Settings
       symlink: false
+      # D: 0003 save code saves main code that runs the experiment to wandb cloud, but what is more
+      # important is that it save also diff.patch so together with hash commit we are able to recrate 
+      # even uncommited changes that were used to run the experiment. ~Fasamik39
+      save_code: true 
