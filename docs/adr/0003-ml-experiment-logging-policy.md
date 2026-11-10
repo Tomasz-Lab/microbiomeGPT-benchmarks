@@ -20,20 +20,24 @@ The main goals of tracking are to:
     - short and easy to read
     - convention: `<model-name>__<dataset>__<%m%d-%H%M%S>`, e.g. `gut_former__sample__1109-141437`
     - `__` separates the parts, because model and dataset names may contain a single `_`
-    - not used for filtering (use tags and config) and not guaranteed to be unique (the run ID is)
-- tags, for quick filtering:
-    - model name
-    - model version
-    - dataset name
-    - run purpose: `debug`, `test-run`, `baseline`, etc.
-- job type: `train` or `inference`
+    - not used for filtering (use the run parameters below) and not guaranteed to be unique (the run ID is)
+- model name
+- model version
+- dataset name
+- run purpose: `debug`, `test-run`, `baseline`, etc.
+- job type: `train`, `inference`, etc.
 - group: set when runs belong together, e.g. the jobs of one Hydra multirun, so they can be
   compared side by side
 - notes: a short description of the run's purpose
 
 ### 2. Code
+Restore the exact code of any run, even with uncommitted changes.
+
 - git commit hash
-- command and Hydra overrides used to start the run
+- git branch name
+- dirty flag: `true` if the run started with uncommitted changes
+- `code.patch`: saved in the run directory when dirty, with all uncommitted changes, including
+  new files in `src/` and `conf/`
 
 ### 3. Environment and hardware
 - OS, Python and dependency versions

@@ -45,7 +45,7 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     if trainer.loggers:
         hparams = {
             "run": cfg_to_plain_dict(cfg.run),
-            "git": git_state(HydraConfig.get().runtime.output_dir),
+            "code": git_state(HydraConfig.get().runtime.output_dir),
         }
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)
