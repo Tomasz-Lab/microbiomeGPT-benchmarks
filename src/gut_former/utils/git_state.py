@@ -26,6 +26,7 @@ def _new_file_diff(root: Path, path: str) -> str:
     ).stdout
 
 
+# D: 0003
 def git_state(output_dir: str | Path) -> dict[str, Any]:
     """Commit, branch and uncommitted changes of the code that runs.
 

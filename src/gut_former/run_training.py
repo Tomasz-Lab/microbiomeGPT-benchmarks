@@ -43,7 +43,7 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     trainer = hydra.utils.instantiate(cfg.trainer)
 
-    # D: 0003
+    # D: 0003, 0004
     if trainer.loggers:
         hparams = {
             "config": cfg_to_plain_dict(cfg),

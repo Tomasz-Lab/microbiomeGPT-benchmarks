@@ -20,6 +20,7 @@ def ids_sha256(ids: Iterable[Any]) -> str:
     return hashlib.sha256("\n".join(sorted(map(str, ids))).encode()).hexdigest()
 
 
+# D: 0003
 def data_state(files: Sequence[str | Path], splits: Mapping[str, Sequence[Any]]) -> dict[str, Any]:
     paths = [Path(file).resolve() for file in files]
     root = Path(os.path.commonpath(paths)) if len(paths) > 1 else paths[0].parent

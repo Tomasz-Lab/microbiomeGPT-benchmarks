@@ -7,6 +7,7 @@ import lightning
 import torch
 
 
+# D: 0003
 def environment_state(trainer: lightning.pytorch.Trainer) -> dict[str, Any]:
     env: dict[str, Any] = {
         "os": platform.platform(),
