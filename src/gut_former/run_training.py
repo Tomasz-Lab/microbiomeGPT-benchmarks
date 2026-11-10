@@ -38,4 +38,9 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     )
 
     trainer = hydra.utils.instantiate(cfg.trainer)
+
+    # D: 0003
+    for logger in trainer.loggers:
+        logger.log_hyperparams({"run": cfg_to_plain_dict(cfg.run)})
+
     trainer.fit(system, datamodule=datamodule, ckpt_path=cfg.task.resume_from)

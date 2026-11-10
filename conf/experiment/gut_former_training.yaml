@@ -13,7 +13,17 @@ defaults:
 
 experiment:
   name: gut_former_training
-  purpose: debug
+
+# D: 0003 the one place that describes the run; loggers only read from it
+run:
+  name: "${model.name}__${dataset.name}__${now:%Y-%m-%d_%H-%M-%S}"
+  model_name: ${model.name}               # eg. gut_former
+  model_version: ${model.model_version}   # eg. v1-0-0
+  dataset_name: ${dataset.name}           # eg. gutmap
+  purpose: debug                          # debug / test-run / baseline / production
+  job_type: train
+  group: null
+  notes: null
 
 hydra:
   launcher:
