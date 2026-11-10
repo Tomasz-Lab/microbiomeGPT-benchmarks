@@ -1,5 +1,8 @@
+import logging
+
 import pandas as pd
 import pytest
+import torch
 from hydra.core.hydra_config import HydraConfig
 
 from gut_former.run_inference import run_inference
@@ -41,3 +44,24 @@ def test_inference_without_checkpoint_writes_no_predictions(cfg_infer, tmp_path)
     with pytest.raises(ValueError, match="checkpoint"):
         run_inference(cfg_infer)
     assert list(tmp_path.glob("*.csv")) == []
+
+
+def test_inference_refuses_checkpoint_with_disallowed_target(
+    cfg_train, cfg_infer, tmp_path, caplog
+):
+    # Given: a trained checkpoint whose loss config was replaced with an arbitrary call
+    HydraConfig().set_config(cfg_train)
+    run_training(cfg_train)
+    checkpoint_path = tmp_path / "checkpoints" / "best.ckpt"
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    checkpoint["hyper_parameters"]["loss"] = {"_target_": "os.system", "command": "echo pwned"}
+    tampered_path = tmp_path / "tampered.ckpt"
+    torch.save(checkpoint, tampered_path)
+    cfg_infer.task.checkpoint_path = str(tampered_path)
+    HydraConfig().set_config(cfg_infer)
+
+    # When / Then
+    with caplog.at_level(logging.ERROR), pytest.raises(ValueError, match="os.system"):
+        run_inference(cfg_infer)
+    assert "Model not loaded" in caplog.text
+    assert list(tmp_path.glob("pred_*.csv")) == []
