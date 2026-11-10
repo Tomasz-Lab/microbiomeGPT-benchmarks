@@ -6,6 +6,7 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from gut_former.system import verify_checkpoint_schema
+from gut_former.utils.data_state import data_state
 from gut_former.utils.environment import environment_state
 from gut_former.utils.git_state import git_state
 from gut_former.utils.hydra_utils import cfg_to_plain_dict
@@ -48,6 +49,7 @@ def run_training(cfg: DictConfig, **_: object) -> None:
             "run": cfg_to_plain_dict(cfg.run),
             "code": git_state(HydraConfig.get().runtime.output_dir),
             "env": environment_state(trainer),
+            "data": data_state(cfg.dataset.name, datamodule.input_files, datamodule.split_ids),
         }
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)

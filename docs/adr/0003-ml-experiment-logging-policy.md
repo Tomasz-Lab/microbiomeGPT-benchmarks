@@ -47,10 +47,15 @@ Restore the exact code of any run, even with uncommitted changes.
 - execution environment: local or HPC cluster (with Slurm job ID)
 
 ### 4. Data
-- dataset name, 
-- source/path and content hash
-- feature names
-- train / validation / test split definition
+- dataset name
+- root: common directory of the input files (machine-specific, for information only)
+- input files: 
+    - path relative to root
+    - sha256 of each file
+- number of samples, 
+- per split (train, val, …) 
+    - its sample count
+    - a hash of its sample IDs
 
 ### 5. Training configuration
 - full Hydra config (model architecture, hyperparameters, number of epochs, etc.)
@@ -64,7 +69,6 @@ Restore the exact code of any run, even with uncommitted changes.
 
 ### 7. Logs
 - console output (stdout / stderr)
-- system metrics (GPU / CPU / memory usage)
 
 ### 8. Artifacts
 - model weights stay local, as we have not yet established whether we can upload them
