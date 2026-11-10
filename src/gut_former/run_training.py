@@ -46,11 +46,10 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     # D: 0003
     if trainer.loggers:
         hparams = {
-            "run": cfg_to_plain_dict(cfg.run),
+            "config": cfg_to_plain_dict(cfg),
             "code": git_state(HydraConfig.get().runtime.output_dir),
             "env": environment_state(trainer),
-            "data": data_state(cfg.dataset.name, datamodule.input_files, datamodule.split_ids),
-            "hydra-full-config": cfg_to_plain_dict(cfg),
+            "dataset_stats": data_state(datamodule.input_files, datamodule.split_ids),
         }
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)

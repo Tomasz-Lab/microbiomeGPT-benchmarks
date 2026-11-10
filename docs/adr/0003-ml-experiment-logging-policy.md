@@ -47,7 +47,6 @@ Restore the exact code of any run, even with uncommitted changes.
 - execution environment: local or HPC cluster (with Slurm job ID)
 
 ### 4. Data
-- dataset name
 - root: common directory of the input files (machine-specific, for information only)
 - input files: 
     - path relative to root
@@ -78,6 +77,21 @@ Restore the exact code of any run, even with uncommitted changes.
 - datasets or any part of the raw data (until a data policy is decided)
 - model weights (until a weights  policy is decided)
 - secrets (API keys, passwords, tokens)
+
+
+### How it is logged
+Every logger gets the same hyperparameters, in four blocks:
+
+- `config`: the resolved Hydra config. It covers sections 1 and 5 for free. It is logged
+  resolved, because `.hydra/config.yaml` keeps interpolations such as `${now:…}` or
+  `${oc.env:…}`, so it doesn't show the values actually used.
+- added at runtime, because the config can't know them:
+    - `code` (section 2): the config doesn't say which code ran
+    - `env` (section 3): the config only holds requests, e.g. `accelerator: auto`, not what was used
+    - `dataset_stats` (section 4): the config names the dataset, but not its content or the
+      resulting split
+- the added blocks never copy values from the config
+- metrics (section 6) come from `self.log` and go to `metrics.csv` and W&B
 
 ## Consequences
 Positive:
