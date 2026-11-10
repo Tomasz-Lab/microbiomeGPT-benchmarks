@@ -17,9 +17,6 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     log.info("Starting training script..")
 
-    if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
-        raise ValueError("Set either task.resume_from or task.init_weights, not both.")
-
     L.seed_everything(cfg.task.seed, workers=True)
 
     datamodule = hydra.utils.instantiate(cfg.datamodule)
