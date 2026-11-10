@@ -46,6 +46,18 @@ def test_inference_without_checkpoint_writes_no_predictions(cfg_infer, tmp_path)
     assert list(tmp_path.glob("*.csv")) == []
 
 
+def test_inference_without_prediction_writer_fails_before_loading(cfg_infer, tmp_path):
+    # Given: a trainer override that drops the PredictionWriter
+    cfg_infer.task.checkpoint_path = str(tmp_path / "missing.ckpt")
+    cfg_infer.trainer.callbacks = [{"_target_": "gut_former.callbacks.RunLogger"}]
+    HydraConfig().set_config(cfg_infer)
+
+    # When / Then
+    with pytest.raises(ValueError, match="BasePredictionWriter"):
+        run_inference(cfg_infer)
+    assert list(tmp_path.glob("*.csv")) == []
+
+
 def test_inference_refuses_checkpoint_with_disallowed_target(
     cfg_train, cfg_infer, tmp_path, caplog
 ):
