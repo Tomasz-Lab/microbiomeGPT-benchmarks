@@ -40,7 +40,9 @@ Restore the exact code of any run, even with uncommitted changes.
   new files in `src/` and `conf/`
 
 ### 3. Environment and hardware
-- OS, Python and dependency versions
+- OS 
+- hostname
+- Core python lib version (torch etc.) just for quick info (the full info stays in uv.lock)
 - hardware used (CPU / GPU type and count)
 - execution environment: local or HPC cluster (with Slurm job ID)
 
