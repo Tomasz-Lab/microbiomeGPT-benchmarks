@@ -18,7 +18,7 @@ The main goals of tracking are to:
 - run name:
     - a label for a single run, shown in the run list and chart legends
     - short and easy to read
-    - convention: `<model-name>__<dataset>__<%m%d-%H%M%S>`, e.g. `gut_former__sample__1109-141437`
+    - convention: `<model-name>__<dataset>__<%Y-%m-%d_%H-%M-%S>`, e.g. `gut_former__sample__2026-11-09_14-14-37`
     - `__` separates the parts, because model and dataset names may contain a single `_`
     - not used for filtering (use the run parameters below) and not guaranteed to be unique (the run ID is)
 - model name
