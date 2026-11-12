@@ -23,6 +23,7 @@ Two levels of the interface for benchmarking:
     - Any model that meets it can be trained and evaluated with the same code,
       even one that isn't a transformer or isn't built from the components below.
 
+
 2. Component level, for ablations inside one family.
    Tokenizer → Encoder → Latent → Decoder → Head, each with its own small base class,
    plugged into a generic container. Each base class fixes only what goes in and out,
@@ -32,6 +33,9 @@ Two levels of the interface for benchmarking:
     - Head is the final output layer (hidden state → one reconstructed value per feature),
       not the attention heads, which are internal to the Encoder and Decoder.
 
+E.g. `ComposableAutoEncoder` (`gut_former.models.autoencoder`) has the architecture
+Tokenizer → Encoder → Latent → Decoder → Head; it is not tied to transformers.
+
 Both interfaces are kept minimal, because we do not have a concrete plan yet for the models
 and architectures to test. We extend them when a second model needs it,
 so we don't design for imagined needs.
@@ -39,19 +43,20 @@ so we don't design for imagined needs.
 The tensor shapes of each interface are documented in the code
 (`gut_former.models.base`, `gut_former.models.components`), not here.
 
-The original model is rebuilt from these components as GutFormer V1 and frozen:
-its classes never change behaviour; a change means a new version (V2).
-We do not keep the monolithic `BacteriaModel` next to it.
-A test checks that V1 reproduces the outputs saved from the original model
-(`tests/data/gut_former_v1_reference.pt`).
+The original model is rebuilt from these components as GutFormer
+(`gut_former.models.autoencoder.gut_former`) and frozen: its classes never change behaviour;
+a change means a new class. We do not keep the monolithic `BacteriaModel` next to it.
+A test checks that GutFormer reproduces the outputs saved from the original model
+(`tests/data/gut_former_reference.pt`).
 
 ## Consequences
 - New models and ablations plug into the same training and evaluation code;
   components can be unit-tested on their own.
 - Hyperparameters hidden in the original class (number of heads, dropout, layer depth,
-  feed-forward width) become explicit configuration, with the original values as V1 defaults.
+  feed-forward width) become explicit configuration, with the original values as GutFormer
+  defaults.
 - Parameter names in the `state_dict` change, so checkpoints of the original `BacteriaModel`
-  do not load into V1 directly; they need a name mapping.
+  do not load into GutFormer directly; they would need a name mapping.
 - Weight initialization consumes the random number generator in a different order,
   so a fresh training run with the same seed is not bit-for-bit identical to an old one,
   although the architecture is the same.
