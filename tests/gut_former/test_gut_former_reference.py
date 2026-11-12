@@ -11,13 +11,22 @@ but never used in forward (`encoder_layer`, `final_encoder_layer`, `decoder_laye
 Note also that "gut_former" can stay in the name of this file after the package name refactor.
 """
 
-import copy
+from functools import partial
 from pathlib import Path
 
 import pytest
 import torch
 from omegaconf import OmegaConf
 
+from gut_former.models.autoencoder import (
+    ComposableAutoEncoder,
+    GutFormer,
+    GutFormerDecoder,
+    GutFormerEncoder,
+    GutFormerHead,
+    GutFormerLatent,
+    GutFormerTokenizer,
+)
 from gut_former.schema import DataSchema
 from gut_former.utils.hydra_utils import cfg_to_plain_dict, instantiate
 from settings.hydra import CONFIG_PATH
@@ -30,32 +39,28 @@ def reference() -> dict:
     return torch.load(REFERENCE_PATH, map_location="cpu", weights_only=True)
 
 
-@pytest.fixture(scope="module")
-def build_gut_former():
-    """[purbancz] Builds GutFormer from conf/model/gut_former.yaml, as the training runner does,
-    so the config is checked too. Sizes are added only to build a small model."""
-    model_config = OmegaConf.load(Path(CONFIG_PATH) / "model" / "gut_former.yaml")
-
-    def build(data_schema: DataSchema, seed: int = 0, **sizes: int):
-        config = copy.deepcopy(model_config)
-        for name, value in sizes.items():
-            config[name] = value
-        model_schema = cfg_to_plain_dict(config)
-        model_schema["data_schema"] = data_schema.to_config()
-        with torch.random.fork_rng(devices=[]):
-            torch.manual_seed(seed)
-            return instantiate(model_schema).eval()
-
-    return build
+def build_small_gut_former(data_schema: DataSchema, embedding_dim: int, latent_size: int):
+    """[purbancz] GutFormer's components at the reference's small sizes; GutFormer itself
+    has its sizes frozen."""
+    return ComposableAutoEncoder(
+        data_schema=data_schema,
+        tokenizer=partial(GutFormerTokenizer, embedding_dim=embedding_dim),
+        encoder=GutFormerEncoder(embedding_dim),
+        latent=GutFormerLatent(embedding_dim, latent_size),
+        decoder=GutFormerDecoder(embedding_dim),
+        head=GutFormerHead(embedding_dim),
+    )
 
 
 @torch.no_grad()
-def test_frozen_gutformer_model_reproduces_saved_reference_outputs(reference, build_gut_former):
+def test_frozen_gutformer_components_reproduce_saved_reference_outputs(reference):
     # Given
-    # [purbancz] The reference was generated with torch.manual_seed(0). Intentionally different
-    model = build_gut_former(
-        DataSchema.from_dict(reference["feature_names"]), **reference["model_config"], seed=42
-    )
+    with torch.random.fork_rng(devices=[]):
+        # [purbancz] The reference was generated with torch.manual_seed(0). Intentionally different
+        torch.manual_seed(42)
+        model = build_small_gut_former(
+            DataSchema.from_dict(reference["feature_names"]), **reference["model_config"]
+        ).eval()
     model.load_state_dict(reference["state_dict"])  # [purbancz] strict: every weight
     inputs, expected = reference["inputs"], reference["outputs"]
 
@@ -69,14 +74,26 @@ def test_frozen_gutformer_model_reproduces_saved_reference_outputs(reference, bu
 
 
 @torch.no_grad()
-def test_frozen_gutformer_model_has_the_original_sizes(reference, build_gut_former):
+def test_gut_former_config_builds_the_frozen_model_at_original_sizes(reference):
     # Given
-    # [purbancz] The reference uses small sizes, so the frozen ones are checked separately
-    model = build_gut_former(DataSchema.from_dict(reference["feature_names"]))
+    # [purbancz] Built from conf/model/gut_former.yaml as the training runner does
+    model_schema = cfg_to_plain_dict(
+        OmegaConf.load(Path(CONFIG_PATH) / "model" / "gut_former.yaml")
+    )
+    model_schema["data_schema"] = DataSchema.from_dict(reference["feature_names"]).to_config()
 
     # When
+    model = instantiate(model_schema).eval()
     output = model(reference["inputs"])
 
     # Then
+    assert isinstance(model, GutFormer)
+    assert [type(component) for component in model.children()] == [
+        GutFormerTokenizer,
+        GutFormerEncoder,
+        GutFormerLatent,
+        GutFormerDecoder,
+        GutFormerHead,
+    ]
     assert model.tokenizer.feature_embeddings("taxonomy").shape[1] == 128
     assert output.latent.shape[1] == 64

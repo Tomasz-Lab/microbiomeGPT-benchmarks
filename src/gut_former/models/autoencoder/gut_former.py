@@ -125,23 +125,14 @@ class GutFormerHead(Head):
 
 
 class GutFormer(ComposableAutoEncoder):
-    """[purbancz] The original model at its original sizes.
+    """[purbancz] The original model at its original sizes."""
 
-    The size arguments exist only so tests can build a small model; configs do not set them.
-    """
-
-    def __init__(
-        self,
-        data_schema: DataSchema,
-        *,
-        embedding_dim: int = EMBEDDING_DIM,
-        latent_size: int = LATENT_SIZE,
-    ):
+    def __init__(self, data_schema: DataSchema):
         super().__init__(
             data_schema=data_schema,
-            tokenizer=partial(GutFormerTokenizer, embedding_dim=embedding_dim),
-            encoder=GutFormerEncoder(embedding_dim),
-            latent=GutFormerLatent(embedding_dim, latent_size),
-            decoder=GutFormerDecoder(embedding_dim),
-            head=GutFormerHead(embedding_dim),
+            tokenizer=partial(GutFormerTokenizer, embedding_dim=EMBEDDING_DIM),
+            encoder=GutFormerEncoder(EMBEDDING_DIM),
+            latent=GutFormerLatent(EMBEDDING_DIM, LATENT_SIZE),
+            decoder=GutFormerDecoder(EMBEDDING_DIM),
+            head=GutFormerHead(EMBEDDING_DIM),
         )

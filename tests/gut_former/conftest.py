@@ -50,9 +50,6 @@ def cfg_train_global(tiny_dataset) -> DictConfig:
         cfg.datamodule.data_dir = str(tiny_dataset.dir)
         cfg.datamodule.name = tiny_dataset.name
         cfg.datamodule.batch_size = 8
-        # [purbancz] GutFormer's sizes are frozen in code; only tests make it smaller
-        cfg.model.embedding_dim = 8
-        cfg.model.latent_size = 4
         cfg.trainer.max_epochs = 1
         cfg.trainer.accelerator = "cpu"
         cfg.trainer.devices = 1
