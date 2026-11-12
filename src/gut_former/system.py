@@ -9,6 +9,7 @@ from torch import nn
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
 
 from gut_former.schema import DataSchema
+from gut_former.utils.hydra_utils import instantiate
 
 log = logging.getLogger(__name__)
 
@@ -28,23 +29,22 @@ def _stage_metrics() -> MetricCollection:
 class AutoEncoderSystem(L.LightningModule):
     """Training, validation and prediction steps for a taxonomy/pathways autoencoder.
 
-    `model_config` and `data_schema` are stored in the checkpoint so `load_system` can rebuild
-    the network without the original data or Hydra config.
+    The constructor arguments are stored in the checkpoint, so `load_from_checkpoint` rebuilds
+    the network (including its data schema) without the original data or Hydra config.
     """
 
     def __init__(
         self,
-        model: nn.Module,
-        loss_fn: nn.Module | None = None,
-        optimizer=None,
-        model_config: dict | None = None,
-        data_schema: dict[str, list[str]] | None = None,
+        model_schema: dict,
+        loss: dict | None = None,
+        optimizer: dict | None = None,
     ):
         super().__init__()
-        self.model = model
-        self.loss_fn = loss_fn
-        self.optimizer_factory = optimizer
-        self.save_hyperparameters(ignore=["model", "loss_fn", "optimizer"])
+        self.save_hyperparameters(logger=False)  # D: 0001
+
+        self.model = instantiate(model_schema)
+        self.loss_fn = instantiate(loss)
+        self.optimizer_fn = instantiate(optimizer)
 
         # Separate attributes, not ModuleDict keys: "train" clashes with nn.Module.train
         self.train_metrics = _stage_metrics()
@@ -91,14 +91,9 @@ class AutoEncoderSystem(L.LightningModule):
         }
 
     def configure_optimizers(self):
-        if self.optimizer_factory is None:
+        if self.optimizer_fn is None:
             raise ValueError("An optimizer is required for training.")
-        return self.optimizer_factory(self.parameters())
-
-
-def is_lightning_checkpoint(path: str | Path) -> bool:
-    checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    return "hyper_parameters" in checkpoint
+        return self.optimizer_fn(self.parameters())
 
 
 def check_schema(expected: DataSchema, actual: DataSchema):
@@ -116,14 +111,13 @@ def check_schema(expected: DataSchema, actual: DataSchema):
 def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     """Fail if the data columns differ from those the checkpoint was trained on."""
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    expected = checkpoint.get("hyper_parameters", {}).get("data_schema")
-    if expected is None:
-        log.warning(
-            "Checkpoint %s has no data schema (legacy format); "
-            "feature names and order cannot be verified.",
-            path,
+    model_schema = checkpoint.get("hyper_parameters", {}).get("model_schema", {})
+    if "data_schema" not in model_schema:
+        raise ValueError(
+            f"Checkpoint {path} has no model_schema.data_schema; it was not saved by this system "
+            "(legacy .pt files go through the gut_former_inference_legacy experiment)."
         )
-        return
+    expected = model_schema["data_schema"]["feature_names"]
     check_schema(DataSchema.from_dict(expected), data_schema)
 
 
@@ -131,30 +125,3 @@ def build_model(model_config, data_schema: DataSchema) -> nn.Module | Any:
     """Instantiate the model config with the data schema."""
     # Not instantiate(..., data_schema=...): Hydra would merge the dataclass into the config
     return hydra.utils.instantiate(model_config, _partial_=True)(data_schema=data_schema)
-
-
-def load_model_state_dict(path: str | Path) -> dict[str, torch.Tensor]:
-    """Model weights from a Lightning checkpoint or a legacy bare state_dict file."""
-    checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    if "hyper_parameters" not in checkpoint:
-        state_dict: dict[str, torch.Tensor] = checkpoint
-        return state_dict
-    return {
-        key.removeprefix("model."): value
-        for key, value in checkpoint["state_dict"].items()
-        if key.startswith("model.")
-    }
-
-
-def load_system(
-    path: str | Path,
-    loss_fn: nn.Module | None = None,
-    map_location="cpu",
-    system_class: type[L.LightningModule] = AutoEncoderSystem,
-) -> L.LightningModule:
-    """Rebuild the network from the schema stored in a Lightning checkpoint and load its weights."""
-    hparams = torch.load(path, map_location=map_location, weights_only=True)["hyper_parameters"]
-    model = build_model(hparams["model_config"], DataSchema.from_dict(hparams["data_schema"]))
-    return system_class.load_from_checkpoint(
-        path, model=model, loss_fn=loss_fn, map_location=map_location
-    )
