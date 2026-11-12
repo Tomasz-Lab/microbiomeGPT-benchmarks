@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 import pandas as pd
 
-from data.modality import ModalityKind
+from data.modalities.base import ModalityKind
 
 type MissingPolicy = Literal["fill_zero", "error", "keep_nan"]
 
