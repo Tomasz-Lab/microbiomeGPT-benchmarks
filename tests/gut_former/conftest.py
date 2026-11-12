@@ -7,8 +7,10 @@ import pandas as pd
 import pytest
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, open_dict
 
+from gut_former.run_training import run_training
 from settings.hydra import CONFIG_NAME, CONFIG_PATH, VERSION_BASE
 
 
@@ -71,6 +73,25 @@ def cfg_train(cfg_train_global, tmp_path) -> DictConfig:
     yield cfg
 
     GlobalHydra.instance().clear()
+
+
+@pytest.fixture(scope="session")
+def trained_run_dir(cfg_train_global, tmp_path_factory) -> Path:
+    """Output folder of one tiny training run, shared by every test that reads its checkpoints.
+
+    Training once keeps the integration suite fast. Tests must only read this folder; any test
+    that trains again or writes files uses its own tmp_path.
+    """
+    run_dir = tmp_path_factory.mktemp("trained_run")
+    cfg = copy.deepcopy(cfg_train_global)
+    with open_dict(cfg):
+        cfg.hydra.runtime.output_dir = str(run_dir)
+    HydraConfig().set_config(cfg)
+
+    run_training(cfg)
+
+    GlobalHydra.instance().clear()
+    return run_dir
 
 
 @pytest.fixture(scope="session")
