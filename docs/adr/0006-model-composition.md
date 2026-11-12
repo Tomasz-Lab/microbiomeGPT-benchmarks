@@ -1,13 +1,14 @@
 # 0006. Model components and composition
 
 Status: Proposed
+
 Date: 2026-11-09
 
 ## Context
 `BacteriaModel` is one monolithic class: tokenization, encoder, latent bottleneck, decoder and
 output layer are hardcoded together, with several hyperparameters fixed inside the class.
 We plan to benchmark different models and run ablations (other layers, depth, modalities),
-which today means rewriting or duplicating the class (#18).
+which today means rewriting or duplicating this class.
 
 ## Decision
 
@@ -24,28 +25,25 @@ Two levels of the interface for benchmarking:
       even one that isn't a transformer or isn't built from the components below.
 
 
-2. Component level, for ablations inside one family.
-   Tokenizer → Encoder → Latent → Decoder → Head, each with its own small base class,
-   plugged into a generic container. Each base class fixes only what goes in and out,
-   so one implementation can be swapped for another without touching the rest of the model.
+2. Component level, for ablations inside one family of models.
+   E.g. `ComposableAutoEncoder` (`gut_former.models.autoencoder`) has the architecture
+    Tokenizer → Encoder → Latent → Decoder → Head; it is not tied to transformers.
+   Each base class fixes only what goes in and out, so one implementation can be swapped
+    for another without touching the rest of the model.
     - Encoder and Decoder take dicts keyed by modality, so modalities can be processed
       either fused from the start or separately and mixed later.
-    - Head is the final output layer (hidden state → one reconstructed value per feature),
-      not the attention heads, which are internal to the Encoder and Decoder.
-
-E.g. `ComposableAutoEncoder` (`gut_former.models.autoencoder`) has the architecture
-Tokenizer → Encoder → Latent → Decoder → Head; it is not tied to transformers.
+    - Head is the final output layer.
 
 Both interfaces are kept minimal, because we do not have a concrete plan yet for the models
 and architectures to test. We extend them when a second model needs it,
-so we don't design for imagined needs.
+(so I didn't design anything yet for future planned or imagined needs).
 
 The tensor shapes of each interface are documented in the code
-(`gut_former.models.base`, `gut_former.models.components`), not here.
+(`gut_former.models.base`, `gut_former.models.components`).
 
-The original model is rebuilt from these components as GutFormer
+The original, legacy model is rebuilt from these components as GutFormer
 (`gut_former.models.autoencoder.gut_former`) and frozen: its classes never change behaviour;
-a change means a new class. We do not keep the monolithic `BacteriaModel` next to it.
+I decided do not keep the monolithic `BacteriaModel` next to it.
 A test checks that GutFormer reproduces the outputs saved from the original model
 (`tests/data/gut_former_reference.pt`).
 
@@ -54,7 +52,7 @@ A test checks that GutFormer reproduces the outputs saved from the original mode
   components can be unit-tested on their own.
 - GutFormer is frozen in code with all its hyperparameters (number of heads, dropout, layer
   depth, feed-forward width, embedding and latent sizes); its config only names the class.
-  To try other values, a component is rewritten under a descriptive name with normal config
+  To try other values, a component should be rewritten under a descriptive name with normal config
   parameters. Flexible settings for benchmarks belong to the components of new models.
 - Models are configured as a composition of components (`conf/model/*.yaml`), and the
   checkpoint stores the resolved composition, so it records which classes and settings were used.
