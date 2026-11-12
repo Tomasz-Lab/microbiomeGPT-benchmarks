@@ -15,7 +15,6 @@ On the market, there are two main tools:
 that seem to resolve this problem.
 
 ## Decision
-## Decision
 1. We decided to pick Weights & Biases for a couple of reasons:
     - it's hosted by them, so there is no need to host this software on our side
     - compared to MLflow, it offers richer, interactive visualizations out of the box:
