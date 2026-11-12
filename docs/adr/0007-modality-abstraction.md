@@ -23,6 +23,19 @@ The code has no well-defined abstraction for our modalities. Nowhere in the code
 
    A field that does not apply to every kind belongs to the kind, not to `ModalitySpec`.
 
+5. The code lives in `src/data/modalities/`, split into three layers:
+
+   ```
+   src/data/modalities/
+   ├── __init__.py   
+   ├── base.py       # ModalityKind, ModalitySpec
+   ├── kinds.py      # CompositionalTable, Graph...
+   └── registry.py   # TAXONOMY, PATHWAYS...
+   ```
+
+   - `base.py`: the abstractions.
+   - `kinds.py`: concrete kinds, each defining the parameters and validation rules for one structure of data.
+   - `registry.py`: the concrete modalities used in the project.
 
 
 ## Consequences
