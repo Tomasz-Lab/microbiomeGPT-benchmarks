@@ -4,8 +4,10 @@ from pathlib import Path
 import lightning.pytorch as L
 import pandas as pd
 import torch
-from lightning.pytorch.callbacks import BasePredictionWriter
+from lightning.pytorch.callbacks import BasePredictionWriter, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
+
+from gut_former.utils.data_state import file_sha256
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +68,32 @@ class RunLogger(L.Callback):
     def on_predict_end(self, trainer, pl_module):
         if trainer.is_global_zero:
             log.info("Inference completed.")
+
+
+# D: 0003
+class CheckpointLogger(L.Callback):
+    """Send the path and sha256 of every saved checkpoint to all loggers, as `checkpoints`.
+
+    Goes through `log_hyperparams` (W&B config, `hparams.yaml`), not the W&B API (ADR 0004).
+    """
+
+    def on_train_end(self, trainer, pl_module):
+        if not trainer.is_global_zero or not trainer.loggers:
+            return
+        # Without a monitor, Lightning still keeps the saved file in best_model_path
+        # (last_model_path is set only with save_last), so this covers best.ckpt and last.ckpt
+        paths = [
+            callback.best_model_path
+            for callback in trainer.checkpoint_callbacks
+            if isinstance(callback, ModelCheckpoint) and callback.best_model_path
+        ]
+        checkpoints = {
+            Path(path).stem: {"path": str(Path(path).resolve()), "sha256": file_sha256(path)}
+            for path in paths
+        }
+        if checkpoints:
+            for logger in trainer.loggers:
+                logger.log_hyperparams({"checkpoints": checkpoints})
 
 
 class PredictionWriter(BasePredictionWriter):

@@ -32,7 +32,10 @@ callbacks:
     monitor: null
     save_weights_only: false
     enable_version_counter: false
-  
+
+  # D: 0003 checkpoint paths and sha256 to every logger
+  - _target_: gut_former.callbacks.CheckpointLogger
+
 
 logger:
   # D: 0002
