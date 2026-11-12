@@ -5,13 +5,20 @@ from typing import Any
 import hydra
 import lightning.pytorch as L
 import torch
-from torch import nn
+from torch import Tensor, nn
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
 
+from gut_former.models.base import ModelOutput
 from gut_former.schema import DataSchema
 from gut_former.utils.hydra_utils import instantiate
 
 log = logging.getLogger(__name__)
+
+
+def _batch_to_inputs(batch: tuple[Tensor, Tensor]) -> dict[str, Tensor]:
+    # [purbancz] BacteriaDataset yields (taxonomy, pathways); models take a dict keyed by modality
+    taxonomy, pathways = batch
+    return {"taxonomy": taxonomy, "pathways": pathways}
 
 
 def _stage_metrics() -> MetricCollection:
@@ -50,15 +57,16 @@ class AutoEncoderSystem(L.LightningModule):
         self.train_metrics = _stage_metrics()
         self.val_metrics = _stage_metrics()
 
-    def forward(self, xt, xp):
-        # Dataset yields (taxonomy, pathways); the model takes (pathways, taxonomy)
-        return self.model(xp, xt)
+    def forward(self, inputs: dict[str, Tensor]) -> ModelOutput:
+        return self.model(inputs)
 
     def _shared_step(self, batch, stage: str):
         if self.loss_fn is None:
             raise ValueError("A loss function is required for training and validation.")
-        xt, xp = batch
-        xt_pred, xp_pred, _ = self(xt, xp)
+        inputs = _batch_to_inputs(batch)
+        reconstructions = self(inputs).reconstructions
+        xt, xp = inputs["taxonomy"], inputs["pathways"]
+        xt_pred, xp_pred = reconstructions["taxonomy"], reconstructions["pathways"]
         loss = self.loss_fn(xt, xt_pred, xp, xp_pred)
 
         # Metric objects accumulate over the epoch and sync across devices themselves;
@@ -82,13 +90,11 @@ class AutoEncoderSystem(L.LightningModule):
         self._shared_step(batch, "val")
 
     def predict_step(self, batch, batch_idx):
-        xt, xp = batch
-        xt_pred, xp_pred, latent = self(xt, xp)
-        return {
-            "taxonomy": xt_pred.squeeze(-1),
-            "pathways": xp_pred.squeeze(-1),
-            "latent": latent,
+        output = self(_batch_to_inputs(batch))
+        predictions = {
+            modality: values.squeeze(-1) for modality, values in output.reconstructions.items()
         }
+        return {**predictions, "latent": output.latent}
 
     def configure_optimizers(self):
         if self.optimizer_fn is None:

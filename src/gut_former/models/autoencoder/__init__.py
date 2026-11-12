@@ -1,5 +1,6 @@
 from gut_former.models.autoencoder.composable import ComposableAutoEncoder
 from gut_former.models.autoencoder.gut_former import (
+    GutFormer,
     GutFormerDecoder,
     GutFormerEncoder,
     GutFormerHead,
@@ -9,6 +10,7 @@ from gut_former.models.autoencoder.gut_former import (
 
 __all__ = [
     "ComposableAutoEncoder",
+    "GutFormer",
     "GutFormerDecoder",
     "GutFormerEncoder",
     "GutFormerHead",

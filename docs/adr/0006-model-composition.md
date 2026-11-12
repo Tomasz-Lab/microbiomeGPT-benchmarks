@@ -52,11 +52,15 @@ A test checks that GutFormer reproduces the outputs saved from the original mode
 ## Consequences
 - New models and ablations plug into the same training and evaluation code;
   components can be unit-tested on their own.
-- Hyperparameters hidden in the original class (number of heads, dropout, layer depth,
-  feed-forward width) become explicit configuration, with the original values as GutFormer
-  defaults.
+- GutFormer is frozen in code with all its hyperparameters (number of heads, dropout, layer
+  depth, feed-forward width, embedding and latent sizes); its config only names the class.
+  To try other values, a component is rewritten under a descriptive name with normal config
+  parameters. Flexible settings for benchmarks belong to the components of new models.
+- Models are configured as a composition of components (`conf/model/*.yaml`), and the
+  checkpoint stores the resolved composition, so it records which classes and settings were used.
 - Parameter names in the `state_dict` change, so checkpoints of the original `BacteriaModel`
-  do not load into GutFormer directly; they would need a name mapping.
+  do not load into GutFormer. We do not provide a name mapping, because no original trained
+  weights need to be reused; the legacy scripts load only `.pt` files trained after this change.
 - Weight initialization consumes the random number generator in a different order,
   so a fresh training run with the same seed is not bit-for-bit identical to an old one,
   although the architecture is the same.

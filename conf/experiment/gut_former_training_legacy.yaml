@@ -2,7 +2,7 @@
 
 defaults:
   - /task: run_gut_former_training_legacy
-  - /model: gut_former_legacy
+  - /model: gut_former
   - /dataset: csv
   - _self_
 

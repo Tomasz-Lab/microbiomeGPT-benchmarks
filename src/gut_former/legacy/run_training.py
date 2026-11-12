@@ -101,7 +101,9 @@ def run_training(cfg: DictConfig, **_):
 
             optimizer.zero_grad()
 
-            Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
+            output = model({"taxonomy": Xt_b, "pathways": Xp_b})
+            Xt_pred = output.reconstructions["taxonomy"]
+            Xp_pred = output.reconstructions["pathways"]
 
             loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
             loss.backward()
@@ -125,7 +127,9 @@ def run_training(cfg: DictConfig, **_):
                 Xt_b = Xt_b.to(DEVICE)
                 Xp_b = Xp_b.to(DEVICE)
 
-                Xt_pred, Xp_pred, latent = model(Xp_b, Xt_b)
+                output = model({"taxonomy": Xt_b, "pathways": Xp_b})
+                Xt_pred = output.reconstructions["taxonomy"]
+                Xp_pred = output.reconstructions["pathways"]
                 loss = loss_func(Xt_b, Xt_pred, Xp_b, Xp_pred)
 
                 test_loss += loss.item() * batch_size
