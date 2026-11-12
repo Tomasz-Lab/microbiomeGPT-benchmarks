@@ -1,7 +1,15 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from data.kinds.base import ModalityKind
+
+class ModalityKind(ABC):
+    """Structure of a modality's data"""
+
+    @abstractmethod
+    def validate(self, data: Any, name: str) -> Any:
+        pass
+
 
 type Scope = Literal["per_sample", "reference"]
 
