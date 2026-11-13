@@ -6,7 +6,7 @@ import hydra
 import lightning.pytorch as L
 import torch
 from torch import nn
-from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
+from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection, MinMetric
 
 from gut_former.schema import DataSchema
 from gut_former.utils.hydra_utils import instantiate
@@ -49,6 +49,9 @@ class AutoEncoderSystem(L.LightningModule):
         # Separate attributes, not ModuleDict keys: "train" clashes with nn.Module.train
         self.train_metrics = _stage_metrics()
         self.val_metrics = _stage_metrics()
+        # D: 0003 best so far val_loss and its epoch, as `val/acc_best` in lightning-hydra-template
+        self.val_loss_best = MinMetric()
+        self.val_loss_best_epoch = 0
 
     def forward(self, xt, xp):
         # Dataset yields (taxonomy, pathways); the model takes (pathways, taxonomy)
@@ -74,6 +77,21 @@ class AutoEncoderSystem(L.LightningModule):
             prog_bar=stage == "val",
         )
         return loss
+
+    def on_train_start(self):
+        # Lightning runs sanity validation before training; don't count it as a best value
+        self.val_loss_best.reset()
+
+    def on_validation_epoch_end(self):
+        if self.trainer.sanity_checking:
+            return
+        loss = self.val_metrics["loss"].compute()
+        if self.val_loss_best.update_count == 0 or loss < self.val_loss_best.compute():
+            self.val_loss_best_epoch = self.current_epoch
+        self.val_loss_best(loss)
+        # Logged as a value, not the metric object, which Lightning would reset every epoch
+        self.log("val_loss_best", self.val_loss_best.compute(), sync_dist=True)
+        self.log("val_loss_best_epoch", float(self.val_loss_best_epoch))
 
     def training_step(self, batch, batch_idx):
         return self._shared_step(batch, "train")

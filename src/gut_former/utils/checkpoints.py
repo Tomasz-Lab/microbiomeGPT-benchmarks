@@ -1,8 +1,19 @@
+import logging
 import shutil
 from pathlib import Path
 
 import lightning.pytorch as L
 import torch
+
+log = logging.getLogger(__name__)
+
+
+def prepare_resume_checkpoint(trainer: L.Trainer, resume_from: str | None) -> str | None:
+    if resume_from is None:
+        return None
+    copied = copy_checkpoints_to_this_run(trainer, resume_from)
+    log.info("Resuming from a copy of %s: %s", resume_from, copied)
+    return copied
 
 
 def copy_checkpoints_to_this_run(trainer: L.Trainer, resume_from: str) -> str:

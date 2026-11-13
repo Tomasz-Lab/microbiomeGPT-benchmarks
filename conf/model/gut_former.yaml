@@ -1,5 +1,6 @@
 _target_: gut_former.model.BacteriaModel
 
+name: gut_former
 model_version: v1-0-0
 embedding_dim: 128
 latent_size: 64

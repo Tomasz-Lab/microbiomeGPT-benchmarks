@@ -1,14 +1,19 @@
+import copy
 import hashlib
 import logging
 import os
 import warnings
+from pathlib import Path
 
+import pandas as pd
 import pytest
 import torch
+import yaml
 from hydra.core.hydra_config import HydraConfig
-from omegaconf import read_write
+from omegaconf import open_dict, read_write
 
 from gut_former.run_training import run_training
+from gut_former.utils.data_state import file_sha256
 
 pytestmark = pytest.mark.integration
 
@@ -100,6 +105,42 @@ def test_train_restores_from_resume_from_checkpoint(cfg_train, trained_run_dir, 
     # Then
     copied_path = os.path.realpath(tmp_path / "checkpoints" / "last.ckpt")
     assert f"Restoring states from the checkpoint path at {copied_path}" in caplog.text
+
+
+def test_best_epoch_and_checkpoints_are_logged(cfg_train, tmp_path):
+    # Given
+    with open_dict(cfg_train):
+        cfg_train.trainer.max_epochs = 3
+        cfg_train.trainer.logger = [
+            {
+                "_target_": "lightning.pytorch.loggers.CSVLogger",
+                "save_dir": str(tmp_path),
+                "name": "csvlogger",
+                "version": "",
+            }
+        ]
+    HydraConfig().set_config(cfg_train)
+    # Like @hydra.main: the task config has no hydra node (loggers get it resolved)
+    task_cfg = copy.deepcopy(cfg_train)
+    with open_dict(task_cfg):
+        del task_cfg["hydra"]
+
+    # When
+    run_training(task_cfg)
+
+    # Then
+    metrics = pd.read_csv(tmp_path / "csvlogger" / "metrics.csv")
+    # Every epoch: min of val_loss so far and the epoch it was reached
+    val = metrics.dropna(subset=["val_loss"]).set_index("epoch")
+    assert val["val_loss_best"].tolist() == pytest.approx(val["val_loss"].cummin().tolist())
+    expected_epochs = [val["val_loss"].loc[:epoch].idxmin() for epoch in val.index]
+    assert val["val_loss_best_epoch"].tolist() == expected_epochs
+
+    hparams = yaml.safe_load((tmp_path / "csvlogger" / "hparams.yaml").read_text())
+    assert set(hparams["checkpoints"]) == {"best", "last"}
+    for name, entry in hparams["checkpoints"].items():
+        assert Path(entry["path"]) == (tmp_path / "checkpoints" / f"{name}.ckpt").resolve()
+        assert entry["sha256"] == file_sha256(entry["path"])
 
 
 def test_resume_into_the_resumed_run_folder_fails(cfg_train, trained_run_dir):

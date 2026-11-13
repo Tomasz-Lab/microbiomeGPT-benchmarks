@@ -33,11 +33,37 @@ callbacks:
     save_weights_only: false
     enable_version_counter: false
 
+  # D: 0003 checkpoint paths and sha256 to every logger
+  - _target_: gut_former.callbacks.CheckpointLogger
 
-# lightning_logs/version_0/metrics.csv is the run's metrics log
+
 logger:
+  # D: 0002
+  - _target_: lightning.pytorch.loggers.WandbLogger
+    project: "microbiomeGPT"            
+    entity: "sano-centre-for-computational-medicine-microbiome-gpt"
+    # D: 0003
+    name: ${run.name}
+    job_type: ${run.job_type}
+    group: ${run.group}
+    notes: ${run.notes}
+    save_dir: "${hydra:runtime.output_dir}" # D: 0004
+    log_model: false # don't send data to WB cloud anytime (even after sync) ~Fasamik39
+    offline: false # set true on VM that do not have acccess to internet or if you manually want to sync logs later ~Fasamik39
+    settings: 
+      # wandb defualt assumes that all runs are in single wandb directory, 
+      # but beacause we are using hydra, each run is in a different directory,
+      # so symlink (for a latest run in project) for us is not needed and 
+      # we can set it to false to avoid confusion ~Fasamik39
+      _target_: wandb.Settings
+      symlink: false
+      # D: 0003 save code saves main code that runs the experiment to wandb cloud, but what is more
+      # important is that it save also diff.patch so together with hash commit we are able to recrate 
+      # even uncommited changes that were used to run the experiment. ~Fasamik39
+      save_code: true
+
+  # D: 0004
   - _target_: lightning.pytorch.loggers.CSVLogger
-    save_dir: ${hydra:runtime.output_dir}
-    name: lightning_logs
-    # Write after every step, so a killed or timed-out job keeps the epochs it finished
-    flush_logs_every_n_steps: 1
+    save_dir: "${hydra:runtime.output_dir}"
+    name: "csvlogger"
+    version: ""

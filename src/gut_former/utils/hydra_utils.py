@@ -19,7 +19,7 @@ def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
 
 # this wraper is need only because later
 # if we want to replace hydra with another config system,
-# we can do it here easily
+# we can do it here easily ~Fasamik39
 def instantiate(config: DictConfig | dict) -> Any:
     """Build the object described by a config with a `_target_` key."""
     _check_targets(config)

@@ -2,10 +2,14 @@ import logging
 
 import hydra
 import lightning.pytorch as L
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from gut_former.system import verify_checkpoint_schema
-from gut_former.utils.checkpoints import copy_checkpoints_to_this_run
+from gut_former.utils.checkpoints import prepare_resume_checkpoint
+from gut_former.utils.data_state import data_state
+from gut_former.utils.environment import environment_state
+from gut_former.utils.git_state import git_state
 from gut_former.utils.hydra_utils import cfg_to_plain_dict
 from gut_former.utils.log_config import setup_logging
 
@@ -37,9 +41,16 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     trainer = hydra.utils.instantiate(cfg.trainer)
 
-    resume_from = cfg.task.resume_from
-    if resume_from is not None:
-        resume_from = copy_checkpoints_to_this_run(trainer, resume_from)
-        log.info("Resuming from a copy of %s: %s", cfg.task.resume_from, resume_from)
+    # D: 0003, 0004
+    if trainer.loggers:
+        hparams = {
+            "config": cfg_to_plain_dict(cfg),
+            "code": git_state(HydraConfig.get().runtime.output_dir),
+            "env": environment_state(trainer),
+            "dataset_stats": data_state(datamodule.input_files, datamodule.split_ids),
+        }
+        for logger in trainer.loggers:
+            logger.log_hyperparams(hparams)
 
-    trainer.fit(system, datamodule=datamodule, ckpt_path=resume_from)
+    ckpt_path = prepare_resume_checkpoint(trainer, cfg.task.resume_from)
+    trainer.fit(system, datamodule=datamodule, ckpt_path=ckpt_path)
