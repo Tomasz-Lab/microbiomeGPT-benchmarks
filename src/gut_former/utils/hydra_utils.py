@@ -1,7 +1,12 @@
+import logging
 from typing import Any
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
+
+from settings.hydra import ALLOWED_TARGET_PREFIXES
+
+log = logging.getLogger(__name__)
 
 
 def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
@@ -17,7 +22,23 @@ def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
 # we can do it here easily ~Fasamik39
 def instantiate(config: DictConfig | dict) -> Any:
     """Build the object described by a config with a `_target_` key."""
+    _check_targets(config)
     return hydra.utils.instantiate(config)
+
+
+def _check_targets(config: Any) -> None:
+    if isinstance(config, dict | DictConfig):
+        target = config.get("_target_")
+        if target is not None and not str(target).startswith(ALLOWED_TARGET_PREFIXES):
+            log.error("Model not loaded: _target_ %r is not in %s", target, ALLOWED_TARGET_PREFIXES)
+            raise ValueError(f"_target_ {target!r} is not allowed.")
+        children = config.values()
+    elif isinstance(config, list | ListConfig):
+        children = config
+    else:
+        return
+    for child in children:
+        _check_targets(child)
 
 
 def load_from_checkpoint(

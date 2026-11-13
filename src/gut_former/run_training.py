@@ -6,6 +6,7 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from gut_former.system import verify_checkpoint_schema
+from gut_former.utils.checkpoints import prepare_resume_checkpoint
 from gut_former.utils.data_state import data_state
 from gut_former.utils.environment import environment_state
 from gut_former.utils.git_state import git_state
@@ -20,9 +21,6 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     setup_logging(logging.INFO if cfg.task.verbose else logging.WARNING)
 
     log.info("Starting training script..")
-
-    if cfg.task.resume_from is not None and cfg.task.init_weights is not None:
-        raise ValueError("Set either task.resume_from or task.init_weights, not both.")
 
     L.seed_everything(cfg.task.seed, workers=True)
 
@@ -54,4 +52,5 @@ def run_training(cfg: DictConfig, **_: object) -> None:
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)
 
-    trainer.fit(system, datamodule=datamodule, ckpt_path=cfg.task.resume_from)
+    ckpt_path = prepare_resume_checkpoint(trainer, cfg.task.resume_from)
+    trainer.fit(system, datamodule=datamodule, ckpt_path=ckpt_path)

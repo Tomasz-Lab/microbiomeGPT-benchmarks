@@ -54,6 +54,10 @@ We need clear rules for which checkpoints exist, what each contains, and why.
     - **Duplication.** A pickled `nn.Module` stores the weights again, next to `state_dict`.
     - **Safe loading.** Checkpoints with pickled objects cannot be opened with
       `torch.load(weights_only=True)`, and unpickling can run arbitrary code.
+      `weights_only=True` alone does not prevent code execution, because the stored `_target_`
+      strings are instantiated on load. `instantiate` therefore only accepts targets starting with
+      `settings.hydra.ALLOWED_TARGET_PREFIXES`. This is a basic guard, not a sandbox: load only
+      checkpoints from trusted runs.
 
 ## Consequences
 
