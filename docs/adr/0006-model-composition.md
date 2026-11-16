@@ -41,6 +41,8 @@ We define two levels of interface:
     - Encoder and Decoder take dicts keyed by modality, so modalities can be processed
       either fused from the start or separately and mixed later.
     - Head is the final output layer.
+    - Pooling (sequence to one vector) is a building block inside a Latent, not a slot of its
+      own, because not every Latent pools.
 
 We keep both interfaces minimal, because we do not have a concrete plan yet for the models
 and architectures to test. We extend them when a model needs it, not in advance for
@@ -61,6 +63,9 @@ Examples of extensions, planned or possible:
 
 The tensor shapes of each interface are documented in the docstrings
 (`gut_former.models.base`, `gut_former.models.autoencoder.base`, `gut_former.models.components`).
+`gut_former.models.components` has one module per kind of component (tokenizer, encoder,
+latent, pooling, decoder, head), holding its interface and the implementations that
+models can reuse.
 
 We rebuild the original model from these components as GutFormer
 (`gut_former.models.autoencoder.gut_former`) and freeze it: its classes never change behaviour.
