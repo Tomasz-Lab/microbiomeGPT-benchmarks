@@ -1,0 +1,24 @@
+# sylph taxonomy (Parquet) + HUMAnN pathways (CSV): sources can be mixed within one dataset.
+_target_: data.modataset.base.MultiOmicsDatasetSpec
+_convert_: all
+name: gut_sylph_humann
+
+modalities:
+  taxonomy_sylph:
+    _target_: data.modataset.base.ModalityEntry
+    spec: {_target_: data.modalities.registry.get_modality_spec, name: taxonomy_sylph}
+    source:
+      _target_: data.sources.files.ParquetSource
+      path: ${oc.env:DATASET_DIR,data}/taxonomy_sylph_sample.parquet
+  pathways_humann:
+    _target_: data.modataset.base.ModalityEntry
+    spec: {_target_: data.modalities.registry.get_modality_spec, name: pathways_humann}
+    source:
+      _target_: data.sources.files.CsvSource
+      path: ${oc.env:DATASET_DIR,data}/pathways_humann_sample.csv
+
+metadata:
+  _target_: data.modataset.base.MetadataEntry
+  source:
+    _target_: data.sources.files.CsvSource
+    path: ${oc.env:DATASET_DIR,data}/metadata_sample.csv

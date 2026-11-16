@@ -75,19 +75,34 @@ class TinyDataset:
 
 @pytest.fixture(scope="session")
 def tiny_dataset(tmp_path_factory) -> TinyDataset:
-    """Taxonomy and pathways CSVs with 20 samples, 6 taxa and 5 pathways."""
+    """Taxonomy, pathways and metadata CSVs with 20 samples, 6 taxa and 5 pathways.
+
+    Rows sum to 100 (taxonomy, MetaPhlAn percent) and 1 (pathways, HUMAnN relab), as the
+    `taxonomy_metaphlan` and `pathways_humann` modalities require.
+    """
     dataset = TinyDataset(dir=tmp_path_factory.mktemp("data"), name="tiny")
     rng = np.random.default_rng(0)
     index = pd.Index([f"sample_{i}" for i in range(20)], name="sample")
     taxonomy = pd.DataFrame(
-        rng.random((20, 6)), index=index, columns=[f"taxon_{i}" for i in range(6)]
+        rng.dirichlet(np.ones(6), 20) * 100, index=index, columns=[f"taxon_{i}" for i in range(6)]
     )
     pathways = pd.DataFrame(
-        rng.random((20, 5)), index=index, columns=[f"pathway_{i}" for i in range(5)]
+        rng.dirichlet(np.ones(5), 20), index=index, columns=[f"pathway_{i}" for i in range(5)]
     )
+    metadata = pd.DataFrame({"study_condition": ["control"] * 20}, index=index)
     taxonomy.to_csv(dataset.dir / f"taxonomy_{dataset.name}.csv")
     pathways.to_csv(dataset.dir / f"pathways_{dataset.name}.csv")
+    metadata.to_csv(dataset.dir / f"metadata_{dataset.name}.csv")
     return dataset
+
+
+def point_modataset_at(cfg: DictConfig, dataset: TinyDataset) -> None:
+    """Read the dataset recipe's files from the tiny dataset instead of the real data."""
+    cfg.modataset.name = dataset.name
+    modalities = cfg.modataset.modalities
+    modalities.taxonomy_metaphlan.source.path = str(dataset.dir / f"taxonomy_{dataset.name}.csv")
+    modalities.pathways_humann.source.path = str(dataset.dir / f"pathways_{dataset.name}.csv")
+    cfg.modataset.metadata.source.path = str(dataset.dir / f"metadata_{dataset.name}.csv")
 
 
 @pytest.fixture(scope="session")
@@ -102,8 +117,7 @@ def cfg_train_global(tiny_dataset) -> DictConfig:
 
     with open_dict(cfg):
         cfg.task.verbose = False
-        cfg.datamodule.data_dir = str(tiny_dataset.dir)
-        cfg.datamodule.name = tiny_dataset.name
+        point_modataset_at(cfg, tiny_dataset)
         cfg.datamodule.batch_size = 8
         cfg.model.embedding_dim = 8
         cfg.model.latent_size = 4
@@ -161,8 +175,7 @@ def cfg_infer_global(tiny_dataset) -> DictConfig:
 
     with open_dict(cfg):
         cfg.task.verbose = False
-        cfg.dataset.name = tiny_dataset.name
-        cfg.datamodule.data_dir = str(tiny_dataset.dir)
+        point_modataset_at(cfg, tiny_dataset)
         cfg.trainer.accelerator = "cpu"
 
     return cfg

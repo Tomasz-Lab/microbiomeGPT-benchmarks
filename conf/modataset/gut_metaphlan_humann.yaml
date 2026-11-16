@@ -1,0 +1,24 @@
+# MetaPhlAn taxonomy + HUMAnN pathways, all from CSV.
+_target_: data.modataset.base.MultiOmicsDatasetSpec
+_convert_: all
+name: gut_metaphlan_humann
+
+modalities:
+  taxonomy_metaphlan:
+    _target_: data.modataset.base.ModalityEntry
+    spec: {_target_: data.modalities.registry.get_modality_spec, name: taxonomy_metaphlan}
+    source:
+      _target_: data.sources.files.CsvSource
+      path: ${oc.env:DATASET_DIR,data}/taxonomy_metaphlan_sample.csv
+  pathways_humann:
+    _target_: data.modataset.base.ModalityEntry
+    spec: {_target_: data.modalities.registry.get_modality_spec, name: pathways_humann}
+    source:
+      _target_: data.sources.files.CsvSource
+      path: ${oc.env:DATASET_DIR,data}/pathways_humann_sample.csv
+
+metadata:
+  _target_: data.modataset.base.MetadataEntry
+  source:
+    _target_: data.sources.files.CsvSource
+    path: ${oc.env:DATASET_DIR,data}/metadata_sample.csv

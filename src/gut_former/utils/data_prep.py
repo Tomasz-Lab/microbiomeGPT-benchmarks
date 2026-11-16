@@ -9,7 +9,9 @@ log = logging.getLogger(__name__)
 def train_val_split(
     df: pd.DataFrame, test_size: float = 0.1, random_state: int = 0
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    idx_train, idx_val = train_test_split(df.index, test_size=test_size, random_state=random_state)
+    idx_train, idx_val = train_test_split(
+        df.index.to_numpy(), test_size=test_size, random_state=random_state
+    )
     return df.loc[idx_train], df.loc[idx_val]
 
 

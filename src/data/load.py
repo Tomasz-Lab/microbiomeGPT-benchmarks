@@ -10,6 +10,8 @@ def load_dataset(spec: MultiOmicsDatasetSpec) -> MultiOmicsDataset:
         data = entry.spec.validate(raw)
         modalities[name] = Modality(spec=entry.spec, data=data)
 
-    metadata = spec.metadata.source.read()
+    raw_metadata = spec.metadata.source.read()
+    # Until metadata has its own spec: the first column is the sample id, as in the modality tables.
+    metadata = raw_metadata.set_index(raw_metadata.columns[0])
 
     return MultiOmicsDataset(name=spec.name, modalities=modalities, metadata=metadata)

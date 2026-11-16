@@ -58,7 +58,7 @@ class MultiOmicsDataset:
     metadata: pd.DataFrame
 
     def __getitem__(self, name: str) -> Modality:
-        pass
+        return self.modalities[name]
 
     def select_samples(self, ids: Iterable[str]) -> "MultiOmicsDataset":
         pass

@@ -4,6 +4,7 @@ import hydra
 import lightning.pytorch as L
 from omegaconf import DictConfig
 
+from data.load import load_dataset
 from gut_former.system import verify_checkpoint_schema
 from gut_former.utils.checkpoints import copy_checkpoints_to_this_run
 from gut_former.utils.hydra_utils import cfg_to_plain_dict
@@ -20,7 +21,8 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     L.seed_everything(cfg.task.seed, workers=True)
 
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
+    datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
     datamodule.setup("fit")
     data_schema = datamodule.data_schema()
 
