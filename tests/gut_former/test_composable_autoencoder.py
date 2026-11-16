@@ -146,4 +146,3 @@ def test_returns_one_reconstruction_per_modality_and_the_latent(model, inputs, d
     for modality, names in data_schema.feature_names.items():
         assert output.reconstructions[modality].shape == (BATCH_SIZE, len(names), 1)
     assert output.latent.shape == (BATCH_SIZE, LATENT_SIZE)
-    assert output.aux == {}

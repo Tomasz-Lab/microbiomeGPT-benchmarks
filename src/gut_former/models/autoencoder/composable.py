@@ -4,12 +4,12 @@ from collections.abc import Callable
 
 from torch import Tensor
 
-from gut_former.models.base import MicrobiomeModel, ModelOutput
+from gut_former.models.autoencoder.base import AutoEncoderModel, AutoEncoderOutput
 from gut_former.models.components import Decoder, Encoder, Head, Latent, Tokenizer
 from gut_former.schema import DataSchema
 
 
-class ComposableAutoEncoder(MicrobiomeModel):
+class ComposableAutoEncoder(AutoEncoderModel):
     """[purbancz] Architecture: Tokenizer -> Encoder -> Latent -> Decoder -> Head"""
 
     def __init__(
@@ -30,7 +30,7 @@ class ComposableAutoEncoder(MicrobiomeModel):
         self.decoder = decoder
         self.head = head
 
-    def forward(self, inputs: dict[str, Tensor]) -> ModelOutput:
+    def forward(self, inputs: dict[str, Tensor]) -> AutoEncoderOutput:
         if set(inputs) != set(self.modalities):
             raise ValueError(
                 f"Expected inputs for modalities {sorted(self.modalities)}, got {sorted(inputs)}."
@@ -47,4 +47,4 @@ class ComposableAutoEncoder(MicrobiomeModel):
             modality: self.head(hidden_states)
             for modality, hidden_states in self.decoder(queries).items()
         }
-        return ModelOutput(reconstructions=reconstructions, latent=latent)
+        return AutoEncoderOutput(latent=latent, reconstructions=reconstructions)

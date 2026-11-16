@@ -1,22 +1,20 @@
 """[purbancz] Model-level interface - ADR 0006."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from torch import Tensor, nn
 
 
 @dataclass
 class ModelOutput:
-    """[purbancz]
-    reconstructions: modality -> (batch_size, num_features, 1)
-    latent: (batch_size, latent_size)
-    aux: extra tensors for the loss
+    """[purbancz] What every model returns; learning methods extend it with what their loss needs.
+
+    latent: (batch_size, latent_size), the deterministic sample representation used downstream
+    (e.g. the mean for a VAE, the pooled embedding for a masked encoder)
     """
 
-    reconstructions: dict[str, Tensor]
     latent: Tensor
-    aux: dict[str, Tensor] = field(default_factory=dict)
 
 
 class MicrobiomeModel(nn.Module, ABC):

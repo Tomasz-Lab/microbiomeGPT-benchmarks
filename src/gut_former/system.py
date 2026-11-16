@@ -8,7 +8,7 @@ import torch
 from torch import Tensor, nn
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection
 
-from gut_former.models.base import ModelOutput
+from gut_former.models.autoencoder import AutoEncoderModel, AutoEncoderOutput
 from gut_former.schema import DataSchema
 from gut_former.utils.hydra_utils import instantiate
 
@@ -49,7 +49,12 @@ class AutoEncoderSystem(L.LightningModule):
         super().__init__()
         self.save_hyperparameters(logger=False)  # D: 0001
 
-        self.model = instantiate(model_schema)
+        model = instantiate(model_schema)
+        if not isinstance(model, AutoEncoderModel):
+            raise TypeError(
+                f"AutoEncoderSystem trains AutoEncoderModel subclasses, got {type(model).__name__}."
+            )
+        self.model = model
         self.loss_fn = instantiate(loss)
         self.optimizer_fn = instantiate(optimizer)
 
@@ -57,8 +62,9 @@ class AutoEncoderSystem(L.LightningModule):
         self.train_metrics = _stage_metrics()
         self.val_metrics = _stage_metrics()
 
-    def forward(self, inputs: dict[str, Tensor]) -> ModelOutput:
-        return self.model(inputs)
+    def forward(self, inputs: dict[str, Tensor]) -> AutoEncoderOutput:
+        output: AutoEncoderOutput = self.model(inputs)
+        return output
 
     def _shared_step(self, batch, stage: str):
         if self.loss_fn is None:

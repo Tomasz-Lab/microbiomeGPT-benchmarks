@@ -14,15 +14,20 @@ which today means rewriting or duplicating this class.
 
 Two levels of the interface for benchmarking:
 
-1. Model level, which matters most for benchmarks. One small contract that the Lightning system,
-   loss, metrics and prediction writer rely on:
-   `forward(inputs) -> ModelOutput(reconstructions, latent, aux)`.
-    - `inputs` and `reconstructions` are dicts keyed by modality name, so models can use more,
-      fewer or different modalities (e.g. for ablations) without changing the interface.
-    - `aux` holds extra tensors a loss may need (e.g. mean and log-variance of a VAE);
-      it is empty for a plain autoencoder.
-    - Any model that meets it can be trained and evaluated with the same code,
-      even one that isn't a transformer or isn't built from the components below.
+1. Model level, the interface every model implements to plug into our pipeline:
+   `MicrobiomeModel.forward(inputs) -> ModelOutput(latent)` (`gut_former.models.base`).
+   It matters most for benchmarks: every model, ours or an external baseline, learns a
+   representation of a microbiome sample, so anything that only needs representations
+   (inference outputs, downstream evaluation, comparisons) works with every model.
+    - `inputs` is a dict keyed by modality name, so models can use more, fewer or different
+      modalities (e.g. for ablations) without changing the interface.
+    - `latent` is the deterministic sample representation used downstream
+      (e.g. the mean for a VAE, the pooled embedding for a masked encoder).
+    - Each learning method extends `ModelOutput` with what its loss needs, and has a system
+      that consumes it. Autoencoders return `AutoEncoderOutput`, which adds `reconstructions`
+      (keyed by modality); `AutoEncoderSystem` trains `AutoEncoderModel` subclasses
+      (`gut_former.models.autoencoder.base`). A VAE would add explicit mean and log-variance
+      fields. Classification is a downstream evaluation of the latent, not a model here.
 
 
 2. Component level, for ablations inside one family of models.
@@ -38,8 +43,8 @@ Both interfaces are kept minimal, because we do not have a concrete plan yet for
 and architectures to test. We extend them when a second model needs it,
 (so I didn't design anything yet for future planned or imagined needs).
 
-The tensor shapes of each interface are documented in the code
-(`gut_former.models.base`, `gut_former.models.components`).
+The tensor shapes of each interface are documented in the docstrings
+(`gut_former.models.base`, `gut_former.models.autoencoder.base`, `gut_former.models.components`).
 
 The original, legacy model is rebuilt from these components as GutFormer
 (`gut_former.models.autoencoder.gut_former`) and frozen: its classes never change behaviour;
@@ -50,6 +55,8 @@ A test checks that GutFormer reproduces the outputs saved from the original mode
 ## Consequences
 - New models and ablations plug into the same training and evaluation code;
   components can be unit-tested on their own.
+- A new learning method (e.g. masked modelling) needs its own output, model base class and
+  system; a new architecture with an existing learning method needs only new components.
 - GutFormer is frozen in code with all its hyperparameters (number of heads, dropout, layer
   depth, feed-forward width, embedding and latent sizes); its config only names the class.
   To try other values, a component should be rewritten under a descriptive name with normal config
@@ -63,4 +70,5 @@ A test checks that GutFormer reproduces the outputs saved from the original mode
   so a fresh training run with the same seed is not bit-for-bit identical to an old one,
   although the architecture is the same.
 - The interfaces may need to grow, e.g. a per-modality Head (different output forms
-  for taxonomy and pathways) or a Latent that returns `aux` for a VAE.
+  for taxonomy and pathways), a Latent that also returns mean and log-variance for a VAE,
+  or a mask passed to the model for masked modelling.
