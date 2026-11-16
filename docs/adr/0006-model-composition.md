@@ -1,6 +1,6 @@
 # 0006. Model components and composition
 
-Status: Proposed
+Status: Accepted
 
 Date: 2026-11-09
 
@@ -40,15 +40,15 @@ Two levels of the interface for benchmarking:
     - Head is the final output layer.
 
 Both interfaces are kept minimal, because we do not have a concrete plan yet for the models
-and architectures to test. We extend them when a second model needs it,
-(so I didn't design anything yet for future planned or imagined needs).
+and architectures to test. They are extended when a model needs it, not in advance for
+imagined needs.
 
 The tensor shapes of each interface are documented in the docstrings
 (`gut_former.models.base`, `gut_former.models.autoencoder.base`, `gut_former.models.components`).
 
 The original, legacy model is rebuilt from these components as GutFormer
-(`gut_former.models.autoencoder.gut_former`) and frozen: its classes never change behaviour;
-I decided do not keep the monolithic `BacteriaModel` next to it.
+(`gut_former.models.autoencoder.gut_former`) and frozen: its classes never change behaviour.
+The monolithic `BacteriaModel` is removed rather than kept next to it.
 A test checks that GutFormer reproduces the outputs saved from the original model
 (`tests/data/gut_former_reference.pt`).
 

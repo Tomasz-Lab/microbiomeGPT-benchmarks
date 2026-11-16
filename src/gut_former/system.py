@@ -16,7 +16,9 @@ log = logging.getLogger(__name__)
 
 
 def _batch_to_inputs(batch: tuple[Tensor, Tensor]) -> dict[str, Tensor]:
-    # [purbancz] BacteriaDataset yields (taxonomy, pathways); models take a dict keyed by modality
+    # [purbancz] Now BacteriaDataset yields (taxonomy, pathways); models take a dict keyed by modality
+    # TODO: in #69 his could be the responsibility of DataLoader to return data in "expected" format.
+    #  System should just get the data and don't care
     taxonomy, pathways = batch
     return {"taxonomy": taxonomy, "pathways": pathways}
 
