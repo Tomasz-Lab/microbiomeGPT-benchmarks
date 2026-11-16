@@ -22,7 +22,7 @@ class ComposableAutoEncoder(AutoEncoderModel):
         head: Head,
     ):
         # [purbancz] tokenizer is a factory, because its size will depend on the data schema.
-        # TODO: #68 -- Check whether the tokenizer take the schema directly from config
+        # TODO: #68 -- Check whether the tokenizer can take the schema directly from config
         super().__init__()
         self.modalities = tuple(data_schema.feature_names)
         self.tokenizer = tokenizer(data_schema)
