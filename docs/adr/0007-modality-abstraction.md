@@ -16,7 +16,7 @@ The code has no well-defined abstraction for our modalities. Nowhere in the code
 3. `ModalityKind` is an abstract interface. Each kind declares its own parameters (e.g. `total`, `tolerance` for `CompositionalTable`) and implements `validate()`, which checks data against them.
 
 4. `ModalitySpec` describes one concrete, named modality. It holds only the fields shared by all kinds:
-   - `name`: stable key used across the system (e.g. `"taxonomy"`),
+   - `name`: stable key used across the system (e.g. `"taxonomy_genus", "taxonomy_species"`),
    - `kind`: a `ModalityKind` instance with concrete parameters,
    - `scope`: `per_sample` (one row per sample) or `reference` (shared across samples, e.g. a phylogenetic tree),
    - `description` (optional): what the values mean and where they come from.
