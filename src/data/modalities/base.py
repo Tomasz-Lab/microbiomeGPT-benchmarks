@@ -1,13 +1,26 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
+import pandas as pd
+
+
+class ModalityValidationError(ValueError):
+    """Data does not satisfy its modality's rules."""
+
 
 class ModalityKind(ABC):
-    """Structure of a modality's data"""
-
     @abstractmethod
     def validate(self, data: Any, name: str) -> Any:
+        pass
+
+    @abstractmethod
+    def sample_ids(self, data: Any) -> pd.Index:
+        pass
+
+    @abstractmethod
+    def select_samples(self, data: Any, ids: Sequence[str]) -> Any:
         pass
 
 
@@ -16,13 +29,13 @@ type Scope = Literal["per_sample", "reference"]
 
 @dataclass(frozen=True)
 class ModalitySpec:
-    """Modality specification, describing the structure of a data modality.
+    """Definition of one modality (e.g. taxonomy_species).
 
     Attributes:
-        name: Modality name.
-        kind: Modality kind.
+        name: Modality name
+        kind: Modality kind
         scope: Whether the modality is per-sample (e.g. species abundances) or reference (e.g. a reference genome) or something else.
-        description(optional): short description of what the values mean and where they come from.
+        description(optional): short description of what the values mean.
     """
 
     name: str
@@ -41,3 +54,21 @@ class ModalitySpec:
 
     def validate(self, data: Any) -> Any:
         return self.kind.validate(data, self.name)
+
+
+@dataclass(frozen=True)
+class Modality:
+    """One modality's data and its definition.
+    Attributes:
+        spec: Which modality this is.
+        data: The values, e.g. a DataFrame for a `CompositionalTable`.
+    """
+
+    spec: ModalitySpec
+    data: Any
+
+    def __post_init__(self) -> None:
+        pass
+
+    def select_samples(self, ids: Sequence[str]) -> "Modality":
+        pass

@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -23,7 +24,6 @@ class CompositionalTable(ModalityKind):
 
     total: float
     tolerance: float
-    feature_pattern: str | None = None
     missing: MissingPolicy = "error"
 
     def __post_init__(self) -> None:
@@ -35,6 +35,12 @@ class CompositionalTable(ModalityKind):
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
         pass
 
+    def sample_ids(self, data: pd.DataFrame) -> pd.Index:
+        pass
+
+    def select_samples(self, data: pd.DataFrame, ids: Sequence[str]) -> pd.DataFrame:
+        pass
+
 
 @dataclass(frozen=True)
 class Graph(ModalityKind):
@@ -42,3 +48,9 @@ class Graph(ModalityKind):
 
     def validate(self, data: Any, name: str) -> Any:
         raise NotImplementedError("Graph modalities are not supported yet.")
+
+    def sample_ids(self, data: Any) -> pd.Index:
+        pass
+
+    def select_samples(self, data: Any, ids: Sequence[str]) -> Any:
+        pass
