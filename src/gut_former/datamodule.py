@@ -10,20 +10,22 @@ from gut_former.schema import DataSchema
 from settings.paths import DATASET_DIR
 
 
+def frame_paths(data_dir: str | Path, name: str) -> tuple[Path, Path]:
+    """Taxonomy and pathways CSV files of a dataset."""
+    return Path(data_dir) / f"taxonomy_{name}.csv", Path(data_dir) / f"pathways_{name}.csv"
+
+
 def load_frames(
     data_dir: str | Path, name: str, taxa_multiplier: float, pathways_multiplier: float
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load taxonomy and pathways tables with the shared preprocessing."""
+    taxonomy_path, pathways_path = frame_paths(data_dir, name)
     taxonomy = (
-        pd.read_csv(f"{data_dir}/taxonomy_{name}.csv", index_col=[0], low_memory=False)
-        .fillna(0)
-        .sort_index()
+        pd.read_csv(taxonomy_path, index_col=[0], low_memory=False).fillna(0).sort_index()
         * taxa_multiplier
     )
     pathways = (
-        pd.read_csv(f"{data_dir}/pathways_{name}.csv", index_col=[0], low_memory=False)
-        .fillna(0)
-        .sort_index()
+        pd.read_csv(pathways_path, index_col=[0], low_memory=False).fillna(0).sort_index()
         * pathways_multiplier
     )
     if not taxonomy.index.equals(pathways.index):
@@ -56,6 +58,9 @@ class BacteriaDataModule(L.LightningDataModule):
         self.seed = seed
 
         self._frames: tuple[pd.DataFrame, pd.DataFrame] | None = None
+        # D: 0003
+        self.input_files: list[Path] = []
+        self.split_ids: dict[str, list] = {}
 
     @property
     def taxonomy(self) -> pd.DataFrame:
@@ -75,11 +80,15 @@ class BacteriaDataModule(L.LightningDataModule):
             self._frames = load_frames(
                 self.data_dir, self.dataset_name, self.taxa_multiplier, self.pathways_multiplier
             )
+            self.input_files = list(frame_paths(self.data_dir, self.dataset_name))
 
         if stage in ("fit", "validate", None):
             # One split of the shared index keeps taxonomy and pathways rows aligned
             idx_train, idx_val = train_test_split(
-                self.taxonomy.index, test_size=self.val_size, random_state=self.seed
+                # to_numpy(): pandas 3 Arrow-backed Index rejects sklearn's array indexing
+                self.taxonomy.index.to_numpy(),
+                test_size=self.val_size,
+                random_state=self.seed,
             )
             self.train_dataset = BacteriaDataset(
                 self.taxonomy.loc[idx_train], self.pathways.loc[idx_train]
@@ -87,6 +96,7 @@ class BacteriaDataModule(L.LightningDataModule):
             self.val_dataset = BacteriaDataset(
                 self.taxonomy.loc[idx_val], self.pathways.loc[idx_val]
             )
+            self.split_ids = {"train": list(idx_train), "val": list(idx_val)}
 
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
