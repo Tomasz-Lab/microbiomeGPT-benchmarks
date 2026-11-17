@@ -1,4 +1,4 @@
-from gut_former.models.base import MicrobiomeModel, ModelOutput
+from gut_former.models.base import MicrobiomeModel, RepresentationOutput
 from gut_former.models.components import Decoder, Encoder, Head, Latent, Pooling, Tokenizer
 
 __all__ = [
@@ -7,7 +7,7 @@ __all__ = [
     "Head",
     "Latent",
     "MicrobiomeModel",
-    "ModelOutput",
+    "RepresentationOutput",
     "Pooling",
     "Tokenizer",
 ]

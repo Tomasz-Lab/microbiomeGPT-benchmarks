@@ -7,7 +7,7 @@ from torch import Tensor, nn
 
 
 @dataclass
-class ModelOutput:
+class RepresentationOutput:
     """[purbancz] What every model returns; learning methods extend it with what their loss needs.
 
     latent: (batch_size, latent_size), the deterministic sample representation used downstream
@@ -19,5 +19,5 @@ class ModelOutput:
 
 class MicrobiomeModel(nn.Module, ABC):
     @abstractmethod
-    def forward(self, inputs: dict[str, Tensor]) -> ModelOutput:
+    def forward(self, inputs: dict[str, Tensor]) -> RepresentationOutput:
         """[purbancz] inputs: modality -> (batch_size, num_features, 1)."""

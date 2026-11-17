@@ -9,7 +9,8 @@ output layer are hardcoded together, with several hyperparameters fixed inside t
 We plan to benchmark different models and run ablations (other layers, depth, modalities),
 which today means rewriting or duplicating this class. The models we compare all learn
 representations of microbiome samples in a latent space; their architectures and learning
-methods differ.
+methods differ. This repository benchmarks foundation models for the human gut microbiome, so
+we shape the interfaces around these models and extend them as our research requires.
 
 ## Decision
 
@@ -17,7 +18,7 @@ We define two levels of interface:
 
 1. Model level defines the interface any model must implement to plug into our pipeline.
    It is a single small contract (`gut_former.models.base`):
-   `MicrobiomeModel.forward(inputs: dict[str, Tensor]) -> ModelOutput`.
+   `MicrobiomeModel.forward(inputs: dict[str, Tensor]) -> RepresentationOutput`.
    It matters most for benchmarks because any model that satisfies it, ours or an external
    baseline, returns a representation of each microbiome sample (`latent`), so it can be
    evaluated and compared with the same code. Training also relies on the output of the model's
@@ -27,8 +28,8 @@ We define two levels of interface:
       modalities (e.g. for ablations) without changing the interface.
     - `latent` is the deterministic sample representation used downstream
       (e.g. the mean for a VAE, the pooled embedding for a masked encoder).
-    - Each learning method extends `ModelOutput` with what its loss needs, and has a system
-      that consumes it. Autoencoders return `AutoEncoderOutput`, which adds `reconstructions`
+    - Each learning method extends `RepresentationOutput` with what its loss needs, and has a
+      system that consumes it. Autoencoders return `AutoEncoderOutput`, which adds `reconstructions`
       (keyed by modality); `AutoEncoderSystem` trains `AutoEncoderModel` subclasses
       (`gut_former.models.autoencoder.base`). Classification is a downstream evaluation of
       the latent, not a model here.
