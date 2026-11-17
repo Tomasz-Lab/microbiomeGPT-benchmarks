@@ -52,6 +52,7 @@ class BacteriaDataModule(L.LightningDataModule):
             self.val_dataset = BacteriaDataset(
                 self.taxonomy.loc[idx_val], self.pathways.loc[idx_val]
             )
+            self.split_ids = {"train": list(idx_train), "val": list(idx_val)}
 
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
