@@ -59,7 +59,10 @@ def run_inference(cfg: DictConfig, **_):
     model.cpu()
 
     # Inference
-    t_pred, p_pred, latent = model(p_tensor, t_tensor)
+    output = model({"taxonomy": t_tensor, "pathways": p_tensor})
+    t_pred = output.reconstructions["taxonomy"]
+    p_pred = output.reconstructions["pathways"]
+    latent = output.latent
 
     # Storing outputs
     t_pred_df = pd.DataFrame(
@@ -76,7 +79,7 @@ def run_inference(cfg: DictConfig, **_):
     p_output_path = f"{output_path}/pred_pathways_{cfg.dataset.name}.csv"
     p_pred_df.to_csv(p_output_path, index=True)
 
-    latent_cols = [f"z{i}" for i in range(cfg.model.latent_size)]
+    latent_cols = [f"z{i}" for i in range(latent.shape[1])]
     latent_df = pd.DataFrame(latent.detach().cpu().numpy(), index=p_df.index, columns=latent_cols)
     latent_df.index.name = t_df.index.name
     latent_output_path = f"{output_path}/latent_{cfg.dataset.name}.csv"
