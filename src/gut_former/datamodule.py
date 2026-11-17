@@ -85,7 +85,10 @@ class BacteriaDataModule(L.LightningDataModule):
         if stage in ("fit", "validate", None):
             # One split of the shared index keeps taxonomy and pathways rows aligned
             idx_train, idx_val = train_test_split(
-                self.taxonomy.index, test_size=self.val_size, random_state=self.seed
+                # to_numpy(): pandas 3 Arrow-backed Index rejects sklearn's array indexing
+                self.taxonomy.index.to_numpy(),
+                test_size=self.val_size,
+                random_state=self.seed,
             )
             self.train_dataset = BacteriaDataset(
                 self.taxonomy.loc[idx_train], self.pathways.loc[idx_train]

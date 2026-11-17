@@ -1,6 +1,6 @@
 # 0004. Backup and exit strategy for W&B
 
-Status: Proposed
+Status: Accepted
 Date: 2026-11-09
 
 ## Context
@@ -13,7 +13,7 @@ blocked), and we may have no warning. Experiment history is crucial for this pro
 so we must not lose it and must be able to move to another tool, such as MLflow.
 
 ## Decision
-1. The local run directory is the source of truth. W&B is a copy of it, used for its UI.
+1. The run directory in storage we control is the source of truth. W&B is a copy of it, used for its UI.
 2. All run directories are stored in one agreed location (to be decided, for now it user machine), set via `OUTPUT_HYDRA`.
 3. Every training run uses two loggers: `CSVLogger` (tool-independent format) and the
    current tracking tool (`WandbLogger`).

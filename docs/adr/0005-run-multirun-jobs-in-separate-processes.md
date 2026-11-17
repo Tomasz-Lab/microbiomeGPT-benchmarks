@@ -1,6 +1,6 @@
 # 0005. Run multirun jobs in separate processes
 
-Status: Proposed
+Status: Accepted
 Date: 2026-11-09
 
 ## Context

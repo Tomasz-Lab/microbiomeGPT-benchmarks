@@ -1,6 +1,6 @@
 # 0003. ML experiment logging policy
 
-Status: Proposed
+Status: Accepted
 Date: 2026-11-09
 
 ## Context
