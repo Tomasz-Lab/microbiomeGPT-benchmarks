@@ -111,10 +111,24 @@ After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.
 feature names of each modality. The model takes the schema and reads its input sizes from
 it, so the runners don't pass data dimensions to the model.
 
-Models are composed from components (ADR 0006). `conf/model/gut_former.yaml` builds the original
-Gut-FORMer model, `GutFormer` (`src/gut_former/models/autoencoder/`), which is frozen in code
+Models are composed from components (ADR 0006).
+
+`conf/model/gut_former.yaml` builds the original Gut-FORMer model, which is frozen in code
 with all its hyperparameters, sizes included. New models compose their own components in
 `conf/model/` and expose their settings there.
+
+`conf/model/transformer_autoencoder.yaml` is the configurable counterpart for experiments: the
+same architecture built from the reusable components in `src/gut_former/models/components/`,
+with GutFormer's values written out. Select it with `model=transformer_autoencoder` and override
+any setting, for example:
+
+```bash
+uv run python src/gut_former/main.py experiment=gut_former_training model=transformer_autoencoder \
+  model.tokenizer.embedding_dim=64 model.encoder.stacks.0.num_layers=2 model.latent.latent_size=32
+```
+
+`embedding_dim` is set once on the tokenizer and the other components refer to it. Components
+whose sizes don't fit together fail at the first training batch with PyTorch's shape error.
 
 The Lightning system (the `LightningModule`, named "system" to avoid confusing it with the model,
 as in the [Lightning style guide](https://lightning.ai/docs/pytorch/stable/starter/style_guide.html))
