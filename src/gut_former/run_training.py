@@ -25,7 +25,8 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     L.seed_everything(cfg.task.seed, workers=True)
 
-    dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
+    dataset_spec = hydra.utils.instantiate(cfg.modataset)
+    dataset = load_dataset(dataset_spec)
     datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
     datamodule.setup("fit")
     data_schema = datamodule.data_schema()
@@ -49,7 +50,11 @@ def run_training(cfg: DictConfig, **_: object) -> None:
             "config": cfg_to_plain_dict(cfg),
             "code": git_state(HydraConfig.get().runtime.output_dir),
             "env": environment_state(trainer),
-            "dataset_stats": data_state(datamodule.input_files, datamodule.split_ids),
+            "dataset_stats": data_state(
+                [entry.source.path for entry in dataset_spec.modalities.values()]
+                + [dataset_spec.metadata.source.path],
+                datamodule.split_ids,
+            ),
         }
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)

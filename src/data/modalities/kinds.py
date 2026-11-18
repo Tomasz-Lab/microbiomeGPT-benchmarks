@@ -33,13 +33,11 @@ class CompositionalTable(ModalityKind):
             raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
-        pass
-
-    def sample_ids(self, data: pd.DataFrame) -> pd.Index:
-        pass
+        # TODO: checks (missing policy, non-negative values, row sums) come in a separate PR.
+        return data
 
     def select_samples(self, data: pd.DataFrame, ids: Sequence[str]) -> pd.DataFrame:
-        pass
+        return data.loc[data.index.intersection(ids)]
 
 
 @dataclass(frozen=True)

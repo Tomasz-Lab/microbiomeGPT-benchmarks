@@ -61,7 +61,13 @@ class MultiOmicsDataset:
         return self.modalities[name]
 
     def select_samples(self, ids: Iterable[str]) -> "MultiOmicsDataset":
-        pass
+        ids = list(ids)  # used once per modality and for metadata, so an iterator would run out
+        modalities = {
+            name: modality.select_samples(ids) for name, modality in self.modalities.items()
+        }
+        metadata = self.metadata.loc[self.metadata.index.intersection(ids)]
+        return MultiOmicsDataset(name=self.name, modalities=modalities, metadata=metadata)
 
     def select_modalities(self, names: Iterable[str]) -> "MultiOmicsDataset":
-        pass
+        modalities = {name: self.modalities[name] for name in names}
+        return MultiOmicsDataset(name=self.name, modalities=modalities, metadata=self.metadata)

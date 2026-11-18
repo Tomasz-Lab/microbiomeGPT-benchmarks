@@ -3,8 +3,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
-import pandas as pd
-
 
 class ModalityValidationError(ValueError):
     """Data does not satisfy its modality's rules."""
@@ -13,10 +11,6 @@ class ModalityValidationError(ValueError):
 class ModalityKind(ABC):
     @abstractmethod
     def validate(self, data: Any, name: str) -> Any:
-        pass
-
-    @abstractmethod
-    def sample_ids(self, data: Any) -> pd.Index:
         pass
 
     @abstractmethod
@@ -53,7 +47,7 @@ class ModalitySpec:
             )
 
     def validate(self, data: Any) -> Any:
-        return self.kind.validate(data)
+        return self.kind.validate(data, self.name)
 
 
 @dataclass(frozen=True)
@@ -68,4 +62,4 @@ class Modality:
     data: Any
 
     def select_samples(self, ids: Sequence[str]) -> "Modality":
-        pass
+        return Modality(spec=self.spec, data=self.spec.kind.select_samples(self.data, ids))
