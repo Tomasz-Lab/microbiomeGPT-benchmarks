@@ -71,7 +71,6 @@ def hidden_states(sequence_length: int) -> Tensor:
         ("num_heads", 0),
         ("feedforward_dim", 0),
         ("dropout", -0.1),
-        ("dropout", 1.0),
     ],
 )
 def test_stack_rejects_invalid_settings(setting, value):

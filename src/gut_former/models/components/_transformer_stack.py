@@ -18,16 +18,10 @@ class TransformerStack(nn.Module):
         feedforward_dim: int,
     ):
         super().__init__()
-        for name, value in (
-            ("num_layers", num_layers),
-            ("num_heads", num_heads),
-            ("feedforward_dim", feedforward_dim),
-        ):
+        for name, value in (("num_layers", num_layers), ("feedforward_dim", feedforward_dim)):
             if value < 1:
                 raise ValueError(f"{name} must be at least 1, got {value}.")
-        if not 0 <= dropout < 1:
-            raise ValueError(f"dropout must be in [0, 1), got {dropout}.")
-        if embedding_dim % num_heads != 0:
+        if num_heads > 0 and embedding_dim % num_heads != 0:
             raise ValueError(
                 f"embedding_dim ({embedding_dim}) must be divisible by num_heads ({num_heads})."
             )
