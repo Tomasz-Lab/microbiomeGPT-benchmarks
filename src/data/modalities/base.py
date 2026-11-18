@@ -53,7 +53,7 @@ class ModalitySpec:
             )
 
     def validate(self, data: Any) -> Any:
-        return self.kind.validate(data, self.name)
+        return self.kind.validate(data)
 
 
 @dataclass(frozen=True)
@@ -66,9 +66,6 @@ class Modality:
 
     spec: ModalitySpec
     data: Any
-
-    def __post_init__(self) -> None:
-        pass
 
     def select_samples(self, ids: Sequence[str]) -> "Modality":
         pass
