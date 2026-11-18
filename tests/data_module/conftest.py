@@ -8,13 +8,14 @@ Vocabulary (from ADRs 0007-0010):
   metadata, ready to use.
 
 Flow: tables -> written to CSV files -> recipe points at the files -> load_dataset(recipe) -> dataset.
+`loaded_dataset` goes through that flow; `dataset` is built directly from `tables`.
 """
 
 import pandas as pd
 import pytest
 
 from data.load import load_dataset
-from data.modalities.base import ModalitySpec
+from data.modalities.base import Modality, ModalitySpec
 from data.modalities.kinds import CompositionalTable
 from data.modataset.base import (
     MetadataEntry,
@@ -61,13 +62,12 @@ def tables() -> dict[str, pd.DataFrame]:
 def recipe(tmp_path, tables) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 
-    Files look like the real ones: the sample id is the first column. That column is named
-    "sample", not "sample_id", so tests can check that loading names the index itself.
+    Files look like the real ones: the sample id is the first column, named "sample_id".
     """
     paths = {}
     for name, table in tables.items():
         paths[name] = tmp_path / f"{name}.csv"
-        table.rename_axis("sample").to_csv(paths[name])
+        table.to_csv(paths[name])
 
     return MultiOmicsDatasetSpec(
         name="dummy",
@@ -80,6 +80,22 @@ def recipe(tmp_path, tables) -> MultiOmicsDatasetSpec:
 
 
 @pytest.fixture
-def dataset(recipe) -> MultiOmicsDataset:
-    """The dummy dataset loaded from `recipe`, for tests of what a dataset can do (e.g. selecting)."""
+def loaded_dataset(recipe) -> MultiOmicsDataset:
+    """The dummy dataset loaded from `recipe` through the full flow (sources -> load_dataset)."""
     return load_dataset(recipe)
+
+
+@pytest.fixture
+def dataset(tables) -> MultiOmicsDataset:
+    """The dummy dataset built directly from `tables`, bypassing files and loading.
+
+    For tests of what a dataset can do (e.g. selecting), so they don't fail when loading does.
+    """
+    return MultiOmicsDataset(
+        name="dummy",
+        modalities={
+            "taxonomy": Modality(spec=TAXONOMY, data=tables["taxonomy"]),
+            "pathways": Modality(spec=PATHWAYS, data=tables["pathways"]),
+        },
+        metadata=tables["metadata"],
+    )

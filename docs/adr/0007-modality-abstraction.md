@@ -1,6 +1,6 @@
 # 0007. Modality abstraction
 
-Status: Accepted
+Status: Proposed
 Date: 2026-11-12
 
 ## Context
