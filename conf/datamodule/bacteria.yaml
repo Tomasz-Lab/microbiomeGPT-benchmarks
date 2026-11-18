@@ -4,8 +4,6 @@ _partial_: true  # the loaded dataset is passed in by the task
 # Which dataset modality feeds each model input
 taxonomy: taxonomy_metaphlan
 pathways: pathways_humann
-taxa_multiplier: 1  # MetaPhlAn is already in percent
-pathways_multiplier: 100  # HUMAnN relab -> percent
 batch_size: 16
 val_size: 0.1
 seed: 0

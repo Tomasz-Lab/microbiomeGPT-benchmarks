@@ -22,20 +22,14 @@ class BacteriaDataModule(L.LightningDataModule):
         dataset: MultiOmicsDataset,
         taxonomy: str,
         pathways: str,
-        taxa_multiplier: float,
-        pathways_multiplier: float,
         batch_size: int = 16,
         val_size: float = 0.1,
         seed: int = 0,
     ):
         super().__init__()
-        self.taxonomy: pd.DataFrame = dataset[taxonomy].data.sort_index() * taxa_multiplier
-        self.pathways: pd.DataFrame = dataset[pathways].data.sort_index() * pathways_multiplier
-        if not self.taxonomy.index.equals(self.pathways.index):
-            raise ValueError(
-                f"Modalities '{taxonomy}' and '{pathways}' of dataset '{dataset.name}' must "
-                "contain the same sample IDs."
-            )
+        self.taxonomy: pd.DataFrame = dataset[taxonomy].data.sort_index()
+        self.pathways: pd.DataFrame = dataset[pathways].data.sort_index()
+
         self.batch_size = batch_size
         self.val_size = val_size
         self.seed = seed
