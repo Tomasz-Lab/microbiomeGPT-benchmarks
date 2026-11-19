@@ -1,10 +1,10 @@
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pandas as pd
 
-from data.modalities.base import Modality, ModalitySpec
-from data.modalities.registry import MODALITY_SPECS
+from data.modalities.base import Modality
+from data.modalities.registry import MODALITY_SPECS, ModalityName
 from data.sources.base import Source
 
 
@@ -26,23 +26,20 @@ class MultiOmicsDatasetSpec:
         modalities: Source of each modality, keyed by its name in `MODALITY_SPECS`,
             e.g. "taxonomy_metaphlan" -> CsvSource(...).
         metadata: Declared metadata.
-        specs: Spec of each modality, resolved from `MODALITY_SPECS` at construction.
     """
 
     name: str
-    modalities: Mapping[str, Source]
+    modalities: Mapping[ModalityName, Source]
     metadata: MetadataEntry
-    specs: Mapping[str, ModalitySpec] = field(init=False)
 
     def __post_init__(self) -> None:
-        # Resolve specs here, so an unknown name fails when the recipe is built, before any file is read.
+        # Check names here, so an unknown name fails when the recipe is built, before any file is read.
         unknown = sorted(set(self.modalities) - set(MODALITY_SPECS))
         if unknown:
             raise ValueError(
                 f"Unknown modalities {unknown} in dataset '{self.name}'; "
                 f"registered: {sorted(MODALITY_SPECS)}"
             )
-        object.__setattr__(self, "specs", {name: MODALITY_SPECS[name] for name in self.modalities})
 
 
 @dataclass(frozen=True)
@@ -56,7 +53,7 @@ class MultiOmicsDataset:
     """
 
     name: str
-    modalities: Mapping[str, Modality]
+    modalities: Mapping[ModalityName, Modality]
     metadata: pd.DataFrame
 
     def __getitem__(self, name: str) -> Modality:

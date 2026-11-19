@@ -60,7 +60,7 @@ def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
 
     Files look like the real ones: the sample id is the first column, named "sample_id".
     The test-only specs are registered for the duration of the test, since a recipe
-    resolves specs by name from the registry.
+    and load_dataset look up specs by name in the registry.
     """
     for spec in (TAXONOMY, PATHWAYS):
         monkeypatch.setitem(registry.MODALITY_SPECS, spec.name, spec)

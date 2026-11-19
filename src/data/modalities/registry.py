@@ -44,7 +44,15 @@ PATHWAYS_HUMANN = ModalitySpec(
     description="MetaCyc pathway relative abundance from HUMAnN; columns are 'PWY-ID: description'.",
 )
 
-MODALITY_SPECS = {
+type ModalityName = str
+"""Name of a registered modality: a key of `MODALITY_SPECS` (e.g. "taxonomy_metaphlan")."""
+
+MODALITY_SPECS: dict[ModalityName, ModalitySpec] = {
     spec.name: spec
     for spec in (TAXONOMY, PATHWAYS, TAXONOMY_METAPHLAN, TAXONOMY_SYLPH, PATHWAYS_HUMANN)
 }
+
+
+def get_modality_spec_from_registry(name: ModalityName) -> ModalitySpec:
+    """Return the registered spec for a modality name."""
+    return MODALITY_SPECS[name]

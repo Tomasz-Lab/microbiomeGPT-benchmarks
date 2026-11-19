@@ -12,7 +12,7 @@ Previous ADRs defined modality kinds, modalities, the multi-omics dataset and so
 1. `load_dataset(spec: MultiOmicsDatasetSpec) -> MultiOmicsDataset`. The input is an instantiated recipe, not a raw Hydra config. 
 2. **Responsibilities.** `load_dataset` only orchestrates. For a given recipe it:
    - reads each modality's raw data from its source;
-   - passes the raw data to the modality's spec (already resolved by the recipe, `spec.specs[name]`), which validates it, and binds the result into a `Modality`;
+   - looks up the modality's spec in the registry by name and passes the raw data to it, which validates it, and binds the result into a `Modality`;
    - reads the metadata from its source in the same way;
    - assembles the `MultiOmicsDataset`, whose constructor validates the cross-modality invariants;
    - returns the dataset.

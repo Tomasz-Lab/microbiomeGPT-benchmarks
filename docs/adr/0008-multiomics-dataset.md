@@ -18,7 +18,7 @@ Dataset recipe (`MultiOmicsDatasetSpec`) is the declaration of a dataset. It des
 
 The recipe is the single source of truth for how a dataset is built. It holds no data and performs no data validation.
 
-Modalities in the recipe are declared by name and source only. The name must be a key in the modality registry (`MODALITY_SPECS` in `src/data/modalities/registry.py`); the recipe resolves the spec from it when it is constructed and exposes the result as `specs`. An unknown name fails at that point, before any file is read, and the error lists the registered names.
+Modalities in the recipe are declared by name and source only. The name must be a key in the modality registry (`MODALITY_SPECS` in `src/data/modalities/registry.py`); the recipe checks this when it is constructed, and `load_dataset` takes the spec from the registry. An unknown name fails at construction, before any file is read, and the error lists the registered names.
 
 ```yaml
 modalities:
