@@ -11,10 +11,10 @@ def test_load_dataset_builds_dataset_from_recipe(recipe, tables):
     assert dataset.name == "dummy"
     assert set(dataset.modalities) == {"taxonomy", "pathways"}
 
-    for name, entry in recipe.modalities.items():
+    for name in recipe.modalities:
         modality = dataset[name]
-        # Data stays bound to the definition it was declared with
-        assert modality.spec is entry.spec
+        # Data stays bound to the spec the recipe resolved from the registry
+        assert modality.spec is recipe.specs[name]
         # Sample id moved from the first column to the index; values are unchanged
         assert_frame_equal(modality.data, tables[name])
 

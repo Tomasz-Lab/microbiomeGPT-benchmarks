@@ -15,14 +15,10 @@ import pandas as pd
 import pytest
 
 from data.load import load_dataset
+from data.modalities import registry
 from data.modalities.base import Modality, ModalitySpec
 from data.modalities.kinds import CompositionalTable
-from data.modataset.base import (
-    MetadataEntry,
-    ModalityEntry,
-    MultiOmicsDataset,
-    MultiOmicsDatasetSpec,
-)
+from data.modataset.base import MetadataEntry, MultiOmicsDataset, MultiOmicsDatasetSpec
 from data.sources.files import CsvSource
 
 SAMPLE_IDS = ["s1", "s2", "s3"]
@@ -59,11 +55,16 @@ def tables() -> dict[str, pd.DataFrame]:
 
 
 @pytest.fixture
-def recipe(tmp_path, tables) -> MultiOmicsDatasetSpec:
+def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 
     Files look like the real ones: the sample id is the first column, named "sample_id".
+    The test-only specs are registered for the duration of the test, since a recipe
+    resolves specs by name from the registry.
     """
+    for spec in (TAXONOMY, PATHWAYS):
+        monkeypatch.setitem(registry.MODALITY_SPECS, spec.name, spec)
+
     paths = {}
     for name, table in tables.items():
         paths[name] = tmp_path / f"{name}.csv"
@@ -72,8 +73,8 @@ def recipe(tmp_path, tables) -> MultiOmicsDatasetSpec:
     return MultiOmicsDatasetSpec(
         name="dummy",
         modalities={
-            "taxonomy": ModalityEntry(spec=TAXONOMY, source=CsvSource(paths["taxonomy"])),
-            "pathways": ModalityEntry(spec=PATHWAYS, source=CsvSource(paths["pathways"])),
+            "taxonomy": CsvSource(paths["taxonomy"]),
+            "pathways": CsvSource(paths["pathways"]),
         },
         metadata=MetadataEntry(source=CsvSource(paths["metadata"])),
     )

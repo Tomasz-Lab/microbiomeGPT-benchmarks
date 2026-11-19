@@ -5,12 +5,13 @@ from data.modataset.base import MultiOmicsDataset, MultiOmicsDatasetSpec
 def load_dataset(spec: MultiOmicsDatasetSpec) -> MultiOmicsDataset:
     """Build a `MultiOmicsDataset` from its recipe."""
     modalities = {}
-    for name, entry in spec.modalities.items():
-        raw = entry.source.read()
+    for name, source in spec.modalities.items():
+        modality_spec = spec.specs[name]
+        raw = source.read()
         # The first column is the sample id, in the modality tables and in the metadata.
         raw = raw.set_index(raw.columns[0])
-        data = entry.spec.validate(raw)
-        modalities[name] = Modality(spec=entry.spec, data=data)
+        data = modality_spec.validate(raw)
+        modalities[name] = Modality(spec=modality_spec, data=data)
 
     raw_metadata = spec.metadata.source.read()
     metadata = raw_metadata.set_index(raw_metadata.columns[0])

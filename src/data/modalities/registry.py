@@ -48,8 +48,3 @@ MODALITY_SPECS = {
     spec.name: spec
     for spec in (TAXONOMY, PATHWAYS, TAXONOMY_METAPHLAN, TAXONOMY_SYLPH, PATHWAYS_HUMANN)
 }
-
-
-def get_modality_spec(name: str) -> ModalitySpec:
-    """Look up a modality spec by name, so Hydra configs can refer to it."""
-    return MODALITY_SPECS[name]

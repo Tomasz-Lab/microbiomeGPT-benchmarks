@@ -1,18 +1,11 @@
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
 from data.modalities.base import Modality, ModalitySpec
+from data.modalities.registry import MODALITY_SPECS
 from data.sources.base import Source
-
-
-@dataclass(frozen=True)
-class ModalityEntry:
-    """One declared modality: what it is (spec) paired with where it comes from (source)."""
-
-    spec: ModalitySpec
-    source: Source
 
 
 @dataclass(frozen=True)
@@ -30,17 +23,26 @@ class MultiOmicsDatasetSpec:
 
     Attributes:
         name: Dataset name, e.g. "cMD".
-        modalities: Declared modalities by name, e.g. "taxonomy_metaphlan" -> ModalityEntry(spec, source).
+        modalities: Source of each modality, keyed by its name in `MODALITY_SPECS`,
+            e.g. "taxonomy_metaphlan" -> CsvSource(...).
         metadata: Declared metadata.
+        specs: Spec of each modality, resolved from `MODALITY_SPECS` at construction.
     """
 
     name: str
-    modalities: Mapping[str, ModalityEntry]
+    modalities: Mapping[str, Source]
     metadata: MetadataEntry
+    specs: Mapping[str, ModalitySpec] = field(init=False)
 
     def __post_init__(self) -> None:
-        # Planned: each key equals its entry's `spec.name`, so the name cannot drift between the two.
-        pass
+        # Resolve specs here, so an unknown name fails when the recipe is built, before any file is read.
+        unknown = sorted(set(self.modalities) - set(MODALITY_SPECS))
+        if unknown:
+            raise ValueError(
+                f"Unknown modalities {unknown} in dataset '{self.name}'; "
+                f"registered: {sorted(MODALITY_SPECS)}"
+            )
+        object.__setattr__(self, "specs", {name: MODALITY_SPECS[name] for name in self.modalities})
 
 
 @dataclass(frozen=True)
