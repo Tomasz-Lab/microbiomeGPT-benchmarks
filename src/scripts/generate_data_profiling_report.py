@@ -5,7 +5,7 @@ from io import TextIOBase
 from pathlib import Path
 from typing import TextIO
 
-import pandas as pd
+import hydra
 import sweetviz as sv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
@@ -25,7 +25,7 @@ class _TeeTextIO(TextIOBase):
 
 
 def run_data_profiling_report(cfg: DictConfig, **_: object) -> None:
-    df = pd.read_csv(cfg.task.path, low_memory=False)
+    df = hydra.utils.instantiate(cfg.task.source).read()
     dropped_columns = []
 
     logs: list[str] = []

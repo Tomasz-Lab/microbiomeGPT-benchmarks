@@ -3,8 +3,8 @@
 defaults:
   - /task: run_gut_former_inference
   - /system: autoencoder
-  - /dataset: csv
-  - /datamodule: bacteria_csv
+  - /modataset: gut_metaphlan_humann
+  - /datamodule: bacteria
   - /trainer: inference
   - _self_
 

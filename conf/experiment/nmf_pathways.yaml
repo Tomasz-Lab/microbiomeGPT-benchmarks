@@ -3,12 +3,14 @@
 defaults:
   - /task: run_nmf
   - /model: nmf
-  - /dataset: csv
+  - /modataset: gut_metaphlan_humann
   - _self_
 
 experiment:
   name: nmf_pathways
 
-dataset:
-  kind: pathways
+task:
+  modality: pathways_humann
   subset: all
+  multiplier: 100
+  collapse_to_genus: false

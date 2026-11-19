@@ -1,94 +1,44 @@
-from pathlib import Path
-
 import lightning.pytorch as L
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
+from data.modataset.base import MultiOmicsDataset
 from gut_former.dataset import BacteriaDataset
 from gut_former.schema import DataSchema
-from settings.paths import DATASET_DIR
-
-
-def frame_paths(data_dir: str | Path, name: str) -> tuple[Path, Path]:
-    """Taxonomy and pathways CSV files of a dataset."""
-    return Path(data_dir) / f"taxonomy_{name}.csv", Path(data_dir) / f"pathways_{name}.csv"
-
-
-def load_frames(
-    data_dir: str | Path, name: str, taxa_multiplier: float, pathways_multiplier: float
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load taxonomy and pathways tables with the shared preprocessing."""
-    taxonomy_path, pathways_path = frame_paths(data_dir, name)
-    taxonomy = (
-        pd.read_csv(taxonomy_path, index_col=[0], low_memory=False).fillna(0).sort_index()
-        * taxa_multiplier
-    )
-    pathways = (
-        pd.read_csv(pathways_path, index_col=[0], low_memory=False).fillna(0).sort_index()
-        * pathways_multiplier
-    )
-    if not taxonomy.index.equals(pathways.index):
-        raise ValueError(
-            f"Taxonomy and pathways samples differ for dataset '{name}'; "
-            "both tables must contain the same sample IDs."
-        )
-    return taxonomy, pathways
 
 
 class BacteriaDataModule(L.LightningDataModule):
+    """Splits a loaded `MultiOmicsDataset` into taxonomy/pathways DataLoaders.
+
+    Args:
+        dataset: The loaded dataset.
+        taxonomy: Name of the dataset modality used as the model's taxonomy input.
+        pathways: Name of the dataset modality used as the model's pathways input.
+    """
+
     def __init__(
         self,
-        name: str,
-        taxa_multiplier: float,
-        pathways_multiplier: float,
+        dataset: MultiOmicsDataset,
+        taxonomy: str,
+        pathways: str,
         batch_size: int = 16,
-        data_dir: str | Path | None = None,
         val_size: float = 0.1,
         seed: int = 0,
     ):
         super().__init__()
-        # Not `name`: LightningDataModule already defines that attribute
-        self.dataset_name = name
-        self.taxa_multiplier = taxa_multiplier
-        self.pathways_multiplier = pathways_multiplier
+        self.taxonomy: pd.DataFrame = dataset[taxonomy].data.sort_index()
+        self.pathways: pd.DataFrame = dataset[pathways].data.sort_index()
+
         self.batch_size = batch_size
-        self.data_dir = data_dir if data_dir is not None else DATASET_DIR
         self.val_size = val_size
         self.seed = seed
 
-        self._frames: tuple[pd.DataFrame, pd.DataFrame] | None = None
-        # D: 0003
-        self.input_files: list[Path] = []
-        self.split_ids: dict[str, list] = {}
-
-    @property
-    def taxonomy(self) -> pd.DataFrame:
-        return self._loaded_frames()[0]
-
-    @property
-    def pathways(self) -> pd.DataFrame:
-        return self._loaded_frames()[1]
-
-    def _loaded_frames(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        if self._frames is None:
-            raise RuntimeError("Call setup() before accessing the data.")
-        return self._frames
-
     def setup(self, stage: str | None = None):
-        if self._frames is None:
-            self._frames = load_frames(
-                self.data_dir, self.dataset_name, self.taxa_multiplier, self.pathways_multiplier
-            )
-            self.input_files = list(frame_paths(self.data_dir, self.dataset_name))
-
         if stage in ("fit", "validate", None):
             # One split of the shared index keeps taxonomy and pathways rows aligned
             idx_train, idx_val = train_test_split(
-                # to_numpy(): pandas 3 Arrow-backed Index rejects sklearn's array indexing
-                self.taxonomy.index.to_numpy(),
-                test_size=self.val_size,
-                random_state=self.seed,
+                self.taxonomy.index.to_numpy(), test_size=self.val_size, random_state=self.seed
             )
             self.train_dataset = BacteriaDataset(
                 self.taxonomy.loc[idx_train], self.pathways.loc[idx_train]

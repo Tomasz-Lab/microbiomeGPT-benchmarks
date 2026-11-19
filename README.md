@@ -53,19 +53,19 @@ Run all tests with `uv run pytest`, or a specific test file with `uv run pytest 
 
 ## 📂 Data
 
-Place input files in the `data/` directory:
+A dataset is declared by a recipe in `conf/modataset/<name>.yaml`: which modalities it contains,
+which modality spec each one follows, and which source (CSV, Parquet, ...) reads it. Select it with
+`modataset=<name>`. Every workflow loads it the same way, with `data.load.load_dataset`.
 
-```
-data/
-├── taxonomy_{dataset}.csv     # samples × species (pipe-separated taxonomy strings)
-├── pathways_{dataset}.csv     # samples × pathways
-└── metadata_{dataset}.csv     # sample metadata, must include study_condition column
-```
+Two dummy datasets are included in `data/` to get started:
 
-All files are indexed by sample ID. Set `dataset.name` to the `{dataset}` name when running an
-experiment.
+| Recipe | Modalities | Sources |
+|---|---|---|
+| `gut_metaphlan_humann` (default) | `taxonomy_metaphlan`, `pathways_humann` | CSV |
+| `gut_sylph_humann` | `taxonomy_sylph`, `pathways_humann` | Parquet + CSV |
 
-A sample dataset (`dataset.name=sample`) is included in the repository to get started quickly.
+Tables have the sample ID in the first column. To use your own data, add a recipe that points to
+your files.
 
 ## ⚙️ Hydra Configuration
 
@@ -81,13 +81,11 @@ The default experiment is `nmf_pathways`. Available experiments are:
 |---|---|
 | `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
 | `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
-| `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
-| `gut_former_inference_legacy` | Run GUT-FORMer inference with the original script |
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups (the GUT-FORMer experiments
-also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
+Experiments compose the `task`, `model`, and `modataset` config groups (the GUT-FORMer experiments
+also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `modataset=gut_sylph_humann` or
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
@@ -104,7 +102,7 @@ configuration/log files under
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
 `AutoEncoderSystem` (`src/gut_former/system.py`) holds the training, validation and prediction
-steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
+steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) splits a loaded dataset into DataLoaders. Both
 can be used directly from notebooks or HPC scripts without Hydra.
 
 After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.py`) with the
@@ -142,7 +140,7 @@ To try another training system, add a config to `conf/system/` and select it wit
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
-  dataset.name=sample \
+  modataset=gut_metaphlan_humann \
   trainer.max_epochs=55
 ```
 
@@ -150,7 +148,9 @@ Training settings are supplied as Hydra overrides:
 
 | Override | Config default | Description |
 |---|---|---|
-| `dataset.name` | `sample` | Dataset name |
+| `modataset` | `gut_metaphlan_humann` | Dataset recipe |
+| `datamodule.taxonomy` | `taxonomy_metaphlan` | Dataset modality used as the taxonomy input (e.g. `taxonomy_sylph`) |
+| `datamodule.pathways` | `pathways_humann` | Dataset modality used as the pathways input |
 | `trainer.max_epochs` | `55` | Number of training epochs |
 | `trainer.accelerator` | `auto` | `auto` (Lightning picks CUDA, MPS or CPU), `cpu`, `cuda`/`gpu`, `mps` |
 | `trainer.devices` | `auto` | Number of devices |
@@ -160,14 +160,15 @@ Training settings are supplied as Hydra overrides:
 | `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
 | `task.seed` | `0` | Random seed |
 | `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
+| `model.embedding_dim` | `128` | Embedding dimension |
+| `model.latent_size` | `64` | Latent space dimension |
 | `task.init_weights` | `null` | Model weights to start from (`.ckpt` or legacy `.pt`); optimizer starts fresh |
 
 Outputs in the Hydra run directory:
 
 - `lightning_logs/version_0/metrics.csv` — every metric the model logs (`train_*` and `val_*`),
   written by Lightning's `CSVLogger`. Training and validation values are on separate rows; use
-  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch. The legacy scripts write
-  `{date}_{dataset}_training_stats.csv` instead, with the validation columns named `test_*`.
+  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch.
 - `lightning_logs/version_0/hparams.yaml` — the run's hyperparameters
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
 
@@ -200,29 +201,27 @@ Fine-tune from existing weights, for example on another dataset, with a fresh op
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_training \
-  dataset.name=my_dataset \
+  modataset=my_dataset \
   trainer.max_epochs=1000 \
-  task.init_weights=/path/to/checkpoint.pt
+  task.init_weights=/path/to/checkpoint.ckpt
 ```
 
 With a Lightning checkpoint, both `task.resume_from` and `task.init_weights` fail early if the
-dataset's taxonomy or pathway columns (names or order) differ from the checkpoint's. Legacy `.pt`
-files store no feature names, so they are loaded with a warning instead.
+dataset's taxonomy or pathway columns (names or order) differ from the checkpoint's.
 
 ### Inference
 
-Inference requires a trained checkpoint, either a Lightning `.ckpt` or a legacy `.pt` file:
+Inference requires a trained checkpoint, a Lightning `.ckpt`:
 
 ```bash
 uv run python src/gut_former/main.py \
   experiment=gut_former_inference \
-  dataset.name=sample \
+  modataset=gut_metaphlan_humann \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
 
 A Lightning checkpoint stores the data schema (feature names per modality), so inference fails
-early if the dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
-rebuilt from `model.*` and the dataset, without that check.
+early if the dataset's taxonomy or pathway columns differ from training.
 
 The inference trainer comes from `conf/trainer/inference.yaml`; override it the same way, e.g.
 `trainer.accelerator=cpu`.
@@ -233,19 +232,6 @@ callback. Its `filenames` setting in `conf/trainer/inference.yaml` maps each mod
 file: modality outputs take the dataset's feature names as columns, and other outputs (the latent
 space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
 
-### Legacy scripts
-
-The original scripts are kept in `src/gut_former/legacy/` and run with the `*_legacy`
-experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
-`{date}_{dataset}_checkpoint.pt` state dict:
-
-```bash
-uv run python src/gut_former/main.py experiment=gut_former_training_legacy task.epochs=55
-uv run python src/gut_former/main.py \
-  experiment=gut_former_inference_legacy \
-  task.checkpoint_path=/path/to/checkpoint.pt
-```
-
 ## 🧬 NMF
 
 NMF decomposes microbiome data into latent signatures. Supports both pathway and taxonomy data, with optional filtering by health status.
@@ -253,7 +239,7 @@ NMF decomposes microbiome data into latent signatures. Supports both pathway and
 ```bash
 uv run python src/gut_former/main.py \
   experiment=nmf_pathways \
-  dataset.name=sample
+  modataset=gut_metaphlan_humann
 ```
 
 The `nmf_pathways` experiment defaults to pathway data and all samples. Settings can be
@@ -261,9 +247,11 @@ overridden with:
 
 | Override | Config default | Description |
 |---|---|---|
-| `dataset.kind` | `pathways` | Data type: `pathways` or `taxonomy` |
-| `dataset.name` | `sample` | Dataset name |
-| `dataset.subset` | `all` | Sample subset: `all`, `healthy`, or `non-healthy` |
+| `modataset` | `gut_metaphlan_humann` | Dataset recipe |
+| `task.modality` | `pathways_humann` | Dataset modality to decompose |
+| `task.multiplier` | `100` | Factor applied to the modality's values |
+| `task.collapse_to_genus` | `false` | Collapse MetaPhlAn species to genus (taxonomy) |
+| `task.subset` | `all` | Sample subset: `all`, `healthy`, or `non-healthy` (needs `study_condition` in metadata) |
 | `model.parameters.n_components` | `8` | Number of NMF signatures |
 | `model.parameters.n_runs` | `10` | NMF runs |
 
@@ -271,21 +259,22 @@ overridden with:
 
 ```bash
 # Pathway NMF, all samples
-uv run python src/gut_former/main.py experiment=nmf_pathways dataset.name=sample
+uv run python src/gut_former/main.py experiment=nmf_pathways
 
 # Taxonomy NMF, healthy samples only
 uv run python src/gut_former/main.py \
   experiment=nmf_pathways \
-  dataset.kind=taxonomy \
-  dataset.name=sample \
-  dataset.subset=healthy
+  task.modality=taxonomy_metaphlan \
+  task.multiplier=1 \
+  task.collapse_to_genus=true \
+  task.subset=healthy
 ```
 
 NMF outputs are saved in the Hydra run directory:
-- `H_{n}_{dataset}_{type}_{filter}.csv` — signature matrix
-- `W_train_{n}_{dataset}_{type}_{filter}.csv` — sample loadings, train set
-- `W_val_{n}_{dataset}_{type}_{filter}.csv` — sample loadings, val set
-- `nmf_stats_{n}_{dataset}_{type}_{filter}.csv` — per-run metrics
+- `H_{n}_{dataset}_{modality}_{filter}.csv` — signature matrix
+- `W_train_{n}_{dataset}_{modality}_{filter}.csv` — sample loadings, train set
+- `W_val_{n}_{dataset}_{modality}_{filter}.csv` — sample loadings, val set
+- `nmf_stats_{n}_{dataset}_{modality}_{filter}.csv` — per-run metrics
 
 ## 🔍 biCV — Rank Selection
 
@@ -294,14 +283,14 @@ Bi-Cross-Validation selects the optimal number of NMF signatures for pathway dat
 ```bash
 uv run python src/gut_former/main.py \
   experiment=bicv_pathways \
-  dataset.name=sample
+  modataset=gut_metaphlan_humann
 ```
 
 The experiment defaults to pathway data. Rank-selection settings are:
 
 | Override | Config default | Description |
 |---|---|---|
-| `dataset.name` | `sample` | Dataset name |
+| `modataset` | `gut_metaphlan_humann` | Dataset recipe |
 | `task.n_components_min` | `2` | Minimum number of signatures to test |
 | `task.n_components_max` | `10` | Maximum number of signatures to test |
 | `model.parameters.n_runs` | `10` | NMF runs per fold per signature |
@@ -321,8 +310,8 @@ associations:
 uv run python src/gut_former/main.py task=run_data_profiling
 ```
 
-By default, this profiles `data/metadata_sample.csv`. Set `task.path=path/to/data.csv` to use
-another CSV. The HTML report, `data_profiling_report.html`, is saved in the Hydra run directory
+It profiles the metadata of the selected dataset recipe (`modataset=<name>`), read through the
+recipe's metadata source. The HTML report, `data_profiling_report.html`, is saved in the Hydra run directory
 under `outputs_hydra/`.
 
 

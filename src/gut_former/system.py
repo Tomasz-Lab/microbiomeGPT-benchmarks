@@ -147,8 +147,7 @@ def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     model_schema = checkpoint.get("hyper_parameters", {}).get("model_schema", {})
     if "data_schema" not in model_schema:
         raise ValueError(
-            f"Checkpoint {path} has no model_schema.data_schema; it was not saved by this system "
-            "(legacy .pt files go through the gut_former_inference_legacy experiment)."
+            f"Checkpoint {path} has no model_schema.data_schema; it was not saved by this system."
         )
     expected = model_schema["data_schema"]["feature_names"]
     check_schema(DataSchema.from_dict(expected), data_schema)
