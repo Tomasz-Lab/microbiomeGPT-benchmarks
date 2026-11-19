@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from sklearn.model_selection import train_test_split
 
-import gut_former.nmf.run_bicv as bicv
-from gut_former.nmf.nmf_core import NMF
+import mgptbench.nmf.run_bicv as bicv
+from mgptbench.nmf.nmf_core import NMF
 
 
 @dataclass(frozen=True, eq=False, slots=True)

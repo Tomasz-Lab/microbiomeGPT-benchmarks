@@ -1,12 +1,12 @@
-_target_: gut_former.models.autoencoder.ComposableAutoEncoder
+_target_: mgptbench.models.autoencoder.ComposableAutoEncoder
 
 tokenizer:
-  _target_: gut_former.models.components.FeatureEmbeddingTokenizer
+  _target_: mgptbench.models.components.FeatureEmbeddingTokenizer
   _partial_: true
   embedding_dim: 128
 
 encoder:
-  _target_: gut_former.models.components.JointTransformerEncoder
+  _target_: mgptbench.models.components.JointTransformerEncoder
   embedding_dim: ${..tokenizer.embedding_dim}
   stacks:
     - num_layers: 1
@@ -19,14 +19,14 @@ encoder:
       feedforward_dim: 2048
 
 latent:
-  _target_: gut_former.models.components.PooledLinearLatent
+  _target_: mgptbench.models.components.PooledLinearLatent
   embedding_dim: ${..tokenizer.embedding_dim}
   latent_size: 64
   pooling:
-    _target_: gut_former.models.components.MeanPooling
+    _target_: mgptbench.models.components.MeanPooling
 
 decoder:
-  _target_: gut_former.models.components.SharedTransformerDecoder
+  _target_: mgptbench.models.components.SharedTransformerDecoder
   embedding_dim: ${..tokenizer.embedding_dim}
   stack:
     num_layers: 1
@@ -35,5 +35,5 @@ decoder:
     feedforward_dim: 2048
 
 head:
-  _target_: gut_former.models.components.LinearHead
+  _target_: mgptbench.models.components.LinearHead
   embedding_dim: ${..tokenizer.embedding_dim}
