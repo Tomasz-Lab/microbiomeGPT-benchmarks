@@ -31,10 +31,16 @@ def tiny_dataset(tmp_path_factory) -> TinyDataset:
     rng = np.random.default_rng(0)
     index = pd.Index([f"sample_{i}" for i in range(20)], name="sample")
     taxonomy = pd.DataFrame(
-        rng.dirichlet(np.ones(6), 20) * 100, index=index, columns=[f"taxon_{i}" for i in range(6)]
+        rng.dirichlet(np.ones(6), 20) * 100,
+        index=index,
+        columns=[
+            f"k__Bacteria|p__P|c__C|o__O|f__F|g__Genus{i}|s__Genus{i}_species" for i in range(6)
+        ],
     )
     pathways = pd.DataFrame(
-        rng.dirichlet(np.ones(5), 20), index=index, columns=[f"pathway_{i}" for i in range(5)]
+        rng.dirichlet(np.ones(5), 20),
+        index=index,
+        columns=[f"PWY-{i}: pathway {i}" for i in range(5)],
     )
     metadata = pd.DataFrame({"study_condition": ["control"] * 20}, index=index)
     taxonomy.to_csv(dataset.dir / f"taxonomy_{dataset.name}.csv")
