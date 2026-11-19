@@ -4,10 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 
-class ModalityValidationError(ValueError):
-    """Data does not satisfy its modality's rules."""
-
-
 class ModalityKind(ABC):
     @abstractmethod
     def validate(self, data: Any, name: str) -> Any:
