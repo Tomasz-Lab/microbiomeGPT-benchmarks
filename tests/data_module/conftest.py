@@ -23,7 +23,7 @@ from data.sources.files import CsvSource
 
 SAMPLE_IDS = ["s1", "s2", "s3"]
 
-# Test-only specs: tests check the mechanism, not the numbers in registry.py.
+# Test-only specs: tests check the mechanism, not the numbers in specs.py.
 TAXONOMY = ModalitySpec(
     name="taxonomy",
     kind=CompositionalTable(total=1.0, tolerance=1e-6, missing="error"),
@@ -63,7 +63,7 @@ def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     and load_dataset look up specs by name in the registry.
     """
     for spec in (TAXONOMY, PATHWAYS):
-        monkeypatch.setitem(registry.MODALITY_SPECS, spec.name, spec)
+        monkeypatch.setitem(registry.MODALITIES._specs, spec.name, spec)
 
     paths = {}
     for name, table in tables.items():
