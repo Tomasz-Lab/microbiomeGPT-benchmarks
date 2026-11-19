@@ -1,9 +1,9 @@
 _target_: mgptbench.run_inference.run_inference
 _partial_: true
 
-name: gut_former_inference
+name: model_inference
 
-# Lightning .ckpt from gut_former_training (best or last); the model is rebuilt from it
+# Lightning .ckpt from autoencoder_training (best or last); the model is rebuilt from it
 # Legacy .pt state_dicts: use experiment=gut_former_inference_legacy
 checkpoint_path: null
 verbose: true

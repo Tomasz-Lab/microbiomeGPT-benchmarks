@@ -79,20 +79,20 @@ The default experiment is `nmf_pathways`. Available experiments are:
 
 | Experiment | Workflow |
 |---|---|
-| `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
-| `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
+| `autoencoder_training` | Train an autoencoder, GUT-FORMer by default (PyTorch Lightning) |
+| `autoencoder_inference` | Run inference from an autoencoder checkpoint (PyTorch Lightning) |
 | `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
 | `gut_former_inference_legacy` | Run GUT-FORMer inference with the original script |
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups (the GUT-FORMer experiments
+Experiments compose the `task`, `model`, and `dataset` config groups (the autoencoder experiments
 also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
 ```bash
-uv run python src/mgptbench/main.py --cfg job experiment=gut_former_training
+uv run python src/mgptbench/main.py --cfg job experiment=autoencoder_training
 ```
 
 Hydra does not change the working directory. Each run writes its workflow outputs and Hydra
@@ -103,11 +103,11 @@ configuration/log files under
 ## 🧠 Model
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
-`AutoEncoderSystem` (`src/mgptbench`) holds the training, validation and prediction
-steps, and `BacteriaDataModule` (`src/mgptbench`) loads and splits the data. Both
+`AutoEncoderSystem` (`src/mgptbench/system.py`) holds the training, validation and prediction
+steps, and `BacteriaDataModule` (`src/mgptbench/datamodule.py`) loads and splits the data. Both
 can be used directly from notebooks or HPC scripts without Hydra.
 
-After `setup()`, the data module exposes a `DataSchema` (`src/mgptbench`) with the
+After `setup()`, the data module exposes a `DataSchema` (`src/mgptbench/schema.py`) with the
 feature names of each modality. The model takes the schema and reads its input sizes from
 it, so the runners don't pass data dimensions to the model.
 
@@ -118,12 +118,12 @@ with all its hyperparameters, sizes included. New models compose their own compo
 `conf/model/` and expose their settings there.
 
 `conf/model/transformer_autoencoder.yaml` is the configurable counterpart for experiments: the
-same architecture built from the reusable components in `src/mgptbench`,
+same architecture built from the reusable components in `src/mgptbench/models/components/`,
 with GutFormer's values written out. Select it with `model=transformer_autoencoder` and override
 any setting, for example:
 
 ```bash
-uv run python src/mgptbench/main.py experiment=gut_former_training model=transformer_autoencoder \
+uv run python src/mgptbench/main.py experiment=autoencoder_training model=transformer_autoencoder \
   model.tokenizer.embedding_dim=64 model.encoder.stacks.0.num_layers=2 model.latent.latent_size=32
 ```
 
@@ -141,7 +141,7 @@ To try another training system, add a config to `conf/system/` and select it wit
 
 ```bash
 uv run python src/mgptbench/main.py \
-  experiment=gut_former_training \
+  experiment=autoencoder_training \
   dataset.name=sample \
   trainer.max_epochs=55
 ```
@@ -182,7 +182,7 @@ number of additional epochs):
 
 ```bash
 uv run python src/mgptbench/main.py \
-  experiment=gut_former_training \
+  experiment=autoencoder_training \
   trainer.max_epochs=100 \
   task.resume_from=/path/to/checkpoints/last.ckpt
 ```
@@ -199,7 +199,7 @@ Fine-tune from existing weights, for example on another dataset, with a fresh op
 
 ```bash
 uv run python src/mgptbench/main.py \
-  experiment=gut_former_training \
+  experiment=autoencoder_training \
   dataset.name=my_dataset \
   trainer.max_epochs=1000 \
   task.init_weights=/path/to/checkpoint.pt
@@ -215,7 +215,7 @@ Inference requires a trained checkpoint, either a Lightning `.ckpt` or a legacy 
 
 ```bash
 uv run python src/mgptbench/main.py \
-  experiment=gut_former_inference \
+  experiment=autoencoder_inference \
   dataset.name=sample \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
@@ -235,7 +235,7 @@ space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
 
 ### Legacy scripts
 
-The original scripts are kept in `src/mgptbench` and run with the `*_legacy`
+The original scripts are kept in `src/mgptbench/legacy/` and run with the `*_legacy`
 experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
 `{date}_{dataset}_checkpoint.pt` state dict:
 

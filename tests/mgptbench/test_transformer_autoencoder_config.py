@@ -30,7 +30,7 @@ def build_model(data_schema: DataSchema, *overrides: str) -> ComposableAutoEncod
         cfg = compose(
             config_name=CONFIG_NAME,
             overrides=[
-                "experiment=gut_former_training",
+                "experiment=autoencoder_training",
                 "model=transformer_autoencoder",
                 *overrides,
             ],

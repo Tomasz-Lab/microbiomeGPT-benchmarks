@@ -45,7 +45,7 @@ def cfg_train_global(tiny_dataset) -> DictConfig:
         cfg = compose(
             config_name=CONFIG_NAME,
             return_hydra_config=True,
-            overrides=["experiment=gut_former_training", "model=transformer_autoencoder"],
+            overrides=["experiment=autoencoder_training", "model=transformer_autoencoder"],
         )
 
     with open_dict(cfg):
@@ -97,12 +97,12 @@ def trained_run_dir(cfg_train_global, tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="session")
 def cfg_infer_global(tiny_dataset) -> DictConfig:
-    """The real gut_former_inference config; overrides only point it at the tiny data on CPU."""
+    """The real autoencoder_inference config; overrides only point it at the tiny data on CPU."""
     with initialize_config_dir(config_dir=CONFIG_PATH, version_base=VERSION_BASE):
         cfg = compose(
             config_name=CONFIG_NAME,
             return_hydra_config=True,
-            overrides=["experiment=gut_former_inference"],
+            overrides=["experiment=autoencoder_inference"],
         )
 
     with open_dict(cfg):

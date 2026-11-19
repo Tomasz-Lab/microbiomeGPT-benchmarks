@@ -76,8 +76,10 @@ def test_frozen_gutformer_components_reproduce_saved_reference_outputs(reference
 @torch.no_grad()
 def test_gut_former_config_builds_the_frozen_model_at_original_sizes(reference):
     # Given
-    # [purbancz] Built from conf/model/mgptbench.yaml as the training runner does
-    model_schema = cfg_to_plain_dict(OmegaConf.load(Path(CONFIG_PATH) / "model" / "mgptbench.yaml"))
+    # [purbancz] Built from conf/model/gut_former.yaml as the training runner does
+    model_schema = cfg_to_plain_dict(
+        OmegaConf.load(Path(CONFIG_PATH) / "model" / "gut_former.yaml")
+    )
     model_schema["data_schema"] = DataSchema.from_dict(reference["feature_names"]).to_config()
 
     # When

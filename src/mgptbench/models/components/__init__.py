@@ -1,7 +1,7 @@
 """[purbancz] Component interfaces and their reusable implementations - ADR 0006.
 
 One module per kind of component, holding its interface and implementations.
-GutFormer's frozen components stay in mgptbench.models.autoencoder.mgptbench.
+GutFormer's frozen components stay in mgptbench.models.autoencoder.gut_former.
 """
 
 from mgptbench.models.components.decoder import Decoder, SharedTransformerDecoder
