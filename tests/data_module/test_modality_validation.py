@@ -1,6 +1,10 @@
 import pytest
 
-from data.modalities.kinds import CompositionalTable, RowsNotSumToTotalError
+from data.modalities.kinds import (
+    CompositionalTable,
+    NegativeValuesError,
+    RowsNotSumToTotalError,
+)
 
 KIND = CompositionalTable(total=1.0, tolerance=1e-6, missing="error")
 
@@ -29,5 +33,7 @@ def test_check_non_negative_accepts_non_negative_data(compositional_table):
 
 
 def test_check_non_negative_rejects_negative_values(compositional_table_negative):
-    with pytest.raises(ValueError, match="non-negative"):
+    with pytest.raises(NegativeValuesError) as exc_info:
         KIND._check_non_negative(compositional_table_negative, "taxonomy")
+
+    assert list(exc_info.value.row_mins.index) == ["s2", "s3"]

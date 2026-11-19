@@ -32,6 +32,25 @@ class RowsNotSumToTotalError(ValueError):
         )
 
 
+class NegativeValuesError(ValueError):
+    """Raised when some rows of a CompositionalTable contain negative values.
+
+    Attributes:
+        modality: Name of the modality that failed validation.
+        row_mins: Smallest value of each offending row, indexed by sample id.
+    """
+
+    def __init__(self, modality: str, row_mins: pd.Series) -> None:
+        self.modality = modality
+        self.row_mins = row_mins
+        preview = ", ".join(f"{i}={m:.6g}" for i, m in row_mins.head(5).items())
+        more = f" (+{len(row_mins) - 5} more)" if len(row_mins) > 5 else ""
+        super().__init__(
+            f"Modality '{modality}': {len(row_mins)} sample(s) contain negative values "
+            f"(all values must be non-negative), min per sample: {preview}{more}"
+        )
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
@@ -62,8 +81,9 @@ class CompositionalTable(ModalityKind):
         return data
 
     def _check_non_negative(self, data: pd.DataFrame, name: str) -> None:
-        if not (data.to_numpy() >= 0).all():
-            raise ValueError(f"Modality '{name}': all values must be non-negative")
+        bad = data.lt(0).any(axis=1)
+        if bad.any():
+            raise NegativeValuesError(name, data[bad].min(axis=1))
 
     def _check_rows_sum_to_total(self, data: pd.DataFrame, name: str) -> None:
         # skipna=False: a row with NaN sums to NaN, and NaN > x is False,
