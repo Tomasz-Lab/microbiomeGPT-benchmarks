@@ -47,9 +47,9 @@ def point_modataset_at(cfg: DictConfig, dataset: TinyDataset) -> None:
     """Read the dataset recipe's files from the tiny dataset instead of the real data."""
     cfg.modataset.name = dataset.name
     modalities = cfg.modataset.modalities
-    modalities.taxonomy_metaphlan.source.path = str(dataset.dir / f"taxonomy_{dataset.name}.csv")
-    modalities.pathways_humann.source.path = str(dataset.dir / f"pathways_{dataset.name}.csv")
-    cfg.modataset.metadata.source.path = str(dataset.dir / f"metadata_{dataset.name}.csv")
+    modalities.taxonomy_metaphlan.path = str(dataset.dir / f"taxonomy_{dataset.name}.csv")
+    modalities.pathways_humann.path = str(dataset.dir / f"pathways_{dataset.name}.csv")
+    cfg.modataset.metadata.path = str(dataset.dir / f"metadata_{dataset.name}.csv")
 
 
 @pytest.fixture(scope="session")

@@ -18,7 +18,7 @@ from data.load import load_dataset
 from data.modalities import registry
 from data.modalities.base import Modality, ModalitySpec
 from data.modalities.kinds import CompositionalTable
-from data.modataset.base import MetadataEntry, MultiOmicsDataset, MultiOmicsDatasetSpec
+from data.modataset.base import MultiOmicsDataset, MultiOmicsDatasetSpec
 from data.sources.files import CsvSource
 
 SAMPLE_IDS = ["s1", "s2", "s3"]
@@ -76,7 +76,7 @@ def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
             "taxonomy": CsvSource(paths["taxonomy"]),
             "pathways": CsvSource(paths["pathways"]),
         },
-        metadata=MetadataEntry(source=CsvSource(paths["metadata"])),
+        metadata=CsvSource(paths["metadata"]),
     )
 
 

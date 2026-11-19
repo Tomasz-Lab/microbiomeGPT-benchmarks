@@ -9,13 +9,6 @@ from data.sources.base import Source
 
 
 @dataclass(frozen=True)
-class MetadataEntry:
-    """Declared metadata: where it comes from. Schema to be defined later."""
-
-    source: Source
-
-
-@dataclass(frozen=True)
 class MultiOmicsDatasetSpec:
     """Recipe for a `MultiOmicsDataset`: which modalities and metadata it consists of and how to load them.
 
@@ -25,12 +18,12 @@ class MultiOmicsDatasetSpec:
         name: Dataset name, e.g. "cMD".
         modalities: Source of each modality, keyed by its name in `MODALITY_SPECS`,
             e.g. "taxonomy_metaphlan" -> CsvSource(...).
-        metadata: Declared metadata.
+        metadata: Source of the per-sample metadata.
     """
 
     name: str
     modalities: Mapping[ModalityName, Source]
-    metadata: MetadataEntry
+    metadata: Source
 
     def __post_init__(self) -> None:
         # Check names here, so an unknown name fails when the recipe is built, before any file is read.

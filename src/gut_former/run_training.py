@@ -51,8 +51,8 @@ def run_training(cfg: DictConfig, **_: object) -> None:
             "code": git_state(HydraConfig.get().runtime.output_dir),
             "env": environment_state(trainer),
             "dataset_stats": data_state(
-                [entry.source.path for entry in dataset_spec.modalities.values()]
-                + [dataset_spec.metadata.source.path],
+                [source.path for source in dataset_spec.modalities.values()]
+                + [dataset_spec.metadata.path],
                 datamodule.split_ids,
             ),
         }

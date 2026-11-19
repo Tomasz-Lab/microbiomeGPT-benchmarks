@@ -12,7 +12,5 @@ modalities:
     path: ${oc.env:DATASET_DIR,data}/pathways_humann_sample.csv
 
 metadata:
-  _target_: data.modataset.base.MetadataEntry
-  source:
-    _target_: data.sources.files.CsvSource
-    path: ${oc.env:DATASET_DIR,data}/metadata_sample.csv
+  _target_: data.sources.files.CsvSource
+  path: ${oc.env:DATASET_DIR,data}/metadata_sample.csv
