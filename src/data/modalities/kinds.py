@@ -51,6 +51,25 @@ class NegativeValuesError(ValueError):
         )
 
 
+class NonNumericColumnsError(TypeError):
+    """Raised when some columns of a CompositionalTable are not numeric.
+
+    Attributes:
+        modality: Name of the modality that failed validation.
+        column_dtypes: Dtypes of the offending columns, indexed by column name.
+    """
+
+    def __init__(self, modality: str, column_dtypes: pd.Series) -> None:
+        self.modality = modality
+        self.column_dtypes = column_dtypes
+        preview = ", ".join(f"{c}={d}" for c, d in column_dtypes.head(5).items())
+        more = f" (+{len(column_dtypes) - 5} more)" if len(column_dtypes) > 5 else ""
+        super().__init__(
+            f"Modality '{modality}': {len(column_dtypes)} column(s) are not numeric "
+            f"(all columns must be numeric): {preview}{more}"
+        )
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
@@ -75,10 +94,16 @@ class CompositionalTable(ModalityKind):
             raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
+        self._check_is_numeric(data, name)
         self._check_non_negative(data, name)
         self._check_rows_sum_to_total(data, name)
 
         return data
+
+    def _check_is_numeric(self, data: pd.DataFrame, name: str) -> None:
+        bad = ~data.dtypes.map(pd.api.types.is_numeric_dtype).astype(bool)
+        if bad.any():
+            raise NonNumericColumnsError(name, data.dtypes[bad])
 
     def _check_non_negative(self, data: pd.DataFrame, name: str) -> None:
         bad = data.lt(0).any(axis=1)

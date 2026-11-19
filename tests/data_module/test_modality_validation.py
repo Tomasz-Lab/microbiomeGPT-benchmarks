@@ -3,6 +3,7 @@ import pytest
 from data.modalities.kinds import (
     CompositionalTable,
     NegativeValuesError,
+    NonNumericColumnsError,
     RowsNotSumToTotalError,
 )
 
@@ -37,3 +38,14 @@ def test_check_non_negative_rejects_negative_values(compositional_table_negative
         KIND._check_non_negative(compositional_table_negative, "taxonomy")
 
     assert list(exc_info.value.row_mins.index) == ["s2", "s3"]
+
+
+def test_check_is_numeric_accepts_numeric_data(compositional_table):
+    KIND._check_is_numeric(compositional_table, "taxonomy")
+
+
+def test_check_is_numeric_rejects_strings_mixed_with_ints(compositional_table_mixed_types):
+    with pytest.raises(NonNumericColumnsError) as exc_info:
+        KIND._check_is_numeric(compositional_table_mixed_types, "taxonomy")
+
+    assert list(exc_info.value.column_dtypes.index) == ["species_b"]

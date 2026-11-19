@@ -91,6 +91,15 @@ def compositional_table_negative() -> pd.DataFrame:
 
 
 @pytest.fixture
+def compositional_table_mixed_types() -> pd.DataFrame:
+    """Invalid compositional table: column species_b mixes strings with ints (object dtype)."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0], "species_b": [1, "abc", 0]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
 def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 
