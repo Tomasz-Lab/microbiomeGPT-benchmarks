@@ -1,12 +1,10 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 
 from data.modalities.base import ModalityKind
-
-type MissingPolicy = Literal["fill_zero", "error", "keep_nan"]
 
 
 class RowsNotSumToTotalError(ValueError):
@@ -70,6 +68,25 @@ class NonNumericColumnsError(TypeError):
         )
 
 
+class MissingValuesError(ValueError):
+    """Raised when some rows of a CompositionalTable contain missing values (NaN).
+
+    Attributes:
+        modality: Name of the modality that failed validation.
+        missing_counts: Number of missing values in each offending row, indexed by sample id.
+    """
+
+    def __init__(self, modality: str, missing_counts: pd.Series) -> None:
+        self.modality = modality
+        self.missing_counts = missing_counts
+        preview = ", ".join(f"{i}={n}" for i, n in missing_counts.head(5).items())
+        more = f" (+{len(missing_counts) - 5} more)" if len(missing_counts) > 5 else ""
+        super().__init__(
+            f"Modality '{modality}': {len(missing_counts)} sample(s) contain missing values "
+            f"(missing='error'), missing values per sample: {preview}{more}"
+        )
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
@@ -77,15 +94,10 @@ class CompositionalTable(ModalityKind):
     Attributes:
         total: Value every row sums to (e.g. 1.0 for relative abundance, 100 for percent).
         tolerance: Allowed absolute deviation of a row sum from `total`.
-        missing: How missing values are handled:
-            "fill_zero" replaces them with 0 (missing means absent),
-            "error" rejects data that has any,
-            "keep_nan" keeps them; rows with NaN are excluded from the row-sum check.
     """
 
     total: float
     tolerance: float
-    missing: MissingPolicy = "error"
 
     def __post_init__(self) -> None:
         if self.total <= 0:
@@ -95,6 +107,7 @@ class CompositionalTable(ModalityKind):
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
         self._check_is_numeric(data, name)
+        self._check_no_missing(data, name)
         self._check_non_negative(data, name)
         self._check_rows_sum_to_total(data, name)
 
@@ -104,6 +117,12 @@ class CompositionalTable(ModalityKind):
         bad = ~data.dtypes.map(pd.api.types.is_numeric_dtype).astype(bool)
         if bad.any():
             raise NonNumericColumnsError(name, data.dtypes[bad])
+
+    def _check_no_missing(self, data: pd.DataFrame, name: str) -> None:
+        missing_counts = data.isna().sum(axis=1)
+        bad = missing_counts > 0
+        if bad.any():
+            raise MissingValuesError(name, missing_counts[bad])
 
     def _check_non_negative(self, data: pd.DataFrame, name: str) -> None:
         bad = data.lt(0).any(axis=1)

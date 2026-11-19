@@ -11,6 +11,7 @@ Flow: tables -> written to CSV files -> recipe points at the files -> load_datas
 `loaded_dataset` goes through that flow; `dataset` is built directly from `tables`.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -26,12 +27,18 @@ SAMPLE_IDS = ["s1", "s2", "s3"]
 # Test-only specs: tests check the mechanism, not the numbers in registry.py.
 TAXONOMY = ModalitySpec(
     name="taxonomy",
-    kind=CompositionalTable(total=1.0, tolerance=1e-6, missing="error"),
+    kind=CompositionalTable(
+        total=1.0,
+        tolerance=1e-6,
+    ),
     scope="per_sample",
 )
 PATHWAYS = ModalitySpec(
     name="pathways",
-    kind=CompositionalTable(total=1.0, tolerance=1e-6, missing="error"),
+    kind=CompositionalTable(
+        total=1.0,
+        tolerance=1e-6,
+    ),
     scope="per_sample",
 )
 
@@ -95,6 +102,15 @@ def compositional_table_mixed_types() -> pd.DataFrame:
     """Invalid compositional table: column species_b mixes strings with ints (object dtype)."""
     return pd.DataFrame(
         {"species_a": [0.5, 0.2, 1.0], "species_b": [1, "abc", 0]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
+def compositional_table_missing() -> pd.DataFrame:
+    """Invalid compositional table: rows s2 and s3 contain NaN, s1 does not."""
+    return pd.DataFrame(
+        {"species_a": [0.5, np.nan, np.nan], "species_b": [0.5, 0.8, np.nan]},
         index=pd.Index(SAMPLE_IDS, name="sample_id"),
     )
 

@@ -2,12 +2,13 @@ import pytest
 
 from data.modalities.kinds import (
     CompositionalTable,
+    MissingValuesError,
     NegativeValuesError,
     NonNumericColumnsError,
     RowsNotSumToTotalError,
 )
 
-KIND = CompositionalTable(total=1.0, tolerance=1e-6, missing="error")
+KIND = CompositionalTable(total=1.0, tolerance=1e-6)
 
 
 def test_check_rows_sum_to_total_accepts_valid_data(compositional_table):
@@ -17,7 +18,7 @@ def test_check_rows_sum_to_total_accepts_valid_data(compositional_table):
 def test_check_rows_sum_to_total_accepts_row_sums_within_tolerance(
     compositional_table_within_tolerance,
 ):
-    kind = CompositionalTable(total=1.0, tolerance=1e-2, missing="error")
+    kind = CompositionalTable(total=1.0, tolerance=1e-2)
 
     kind._check_rows_sum_to_total(compositional_table_within_tolerance, "taxonomy")
 
@@ -49,3 +50,14 @@ def test_check_is_numeric_rejects_strings_mixed_with_ints(compositional_table_mi
         KIND._check_is_numeric(compositional_table_mixed_types, "taxonomy")
 
     assert list(exc_info.value.column_dtypes.index) == ["species_b"]
+
+
+def test_check_no_missing_accepts_data_without_nan(compositional_table):
+    KIND._check_no_missing(compositional_table, "taxonomy")
+
+
+def test_check_no_missing_rejects_nan(compositional_table_missing):
+    with pytest.raises(MissingValuesError) as exc_info:
+        KIND._check_no_missing(compositional_table_missing, "taxonomy")
+
+    assert list(exc_info.value.missing_counts.index) == ["s2", "s3"]
