@@ -116,6 +116,17 @@ def compositional_table_bool() -> pd.DataFrame:
 
 
 @pytest.fixture
+def compositional_table_bad_column_names() -> pd.DataFrame:
+    """Invalid compositional table: species_a follows the 'species_*' convention, the rest do not
+    (another naming convention and an empty, unnamed column)."""
+    return pd.DataFrame(
+        [[0.5, 0.3, 0.2], [0.2, 0.4, 0.4], [1.0, 0.0, 0.0]],
+        columns=["species_a", "k__Bacteria|s__Prevotella_copri", ""],
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
 def compositional_table_missing() -> pd.DataFrame:
     """Invalid compositional table: rows s2 and s3 contain NaN, s1 does not."""
     return pd.DataFrame(
