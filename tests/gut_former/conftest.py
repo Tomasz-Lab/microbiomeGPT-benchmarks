@@ -54,12 +54,13 @@ def point_modataset_at(cfg: DictConfig, dataset: TinyDataset) -> None:
 
 @pytest.fixture(scope="session")
 def cfg_train_global(tiny_dataset) -> DictConfig:
-    """The real gut_former_training config; overrides only make the run small and fast."""
+    """The real training experiment config; overrides only make the run small and fast."""
+    # TODO: rename the experiment in the repository cleanup issue
     with initialize_config_dir(config_dir=CONFIG_PATH, version_base=VERSION_BASE):
         cfg = compose(
             config_name=CONFIG_NAME,
             return_hydra_config=True,
-            overrides=["experiment=gut_former_training"],
+            overrides=["experiment=gut_former_training", "model=transformer_autoencoder"],
         )
 
     with open_dict(cfg):

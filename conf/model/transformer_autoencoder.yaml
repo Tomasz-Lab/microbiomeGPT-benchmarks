@@ -1,0 +1,39 @@
+_target_: gut_former.models.autoencoder.ComposableAutoEncoder
+
+tokenizer:
+  _target_: gut_former.models.components.FeatureEmbeddingTokenizer
+  _partial_: true
+  embedding_dim: 128
+
+encoder:
+  _target_: gut_former.models.components.JointTransformerEncoder
+  embedding_dim: ${..tokenizer.embedding_dim}
+  stacks:
+    - num_layers: 1
+      num_heads: 2
+      dropout: 0.05
+      feedforward_dim: 2048
+    - num_layers: 1
+      num_heads: ${...embedding_dim}  # [purbancz] One head per embedding dimension, as in GutFormer
+      dropout: 0.1
+      feedforward_dim: 2048
+
+latent:
+  _target_: gut_former.models.components.PooledLinearLatent
+  embedding_dim: ${..tokenizer.embedding_dim}
+  latent_size: 64
+  pooling:
+    _target_: gut_former.models.components.MeanPooling
+
+decoder:
+  _target_: gut_former.models.components.SharedTransformerDecoder
+  embedding_dim: ${..tokenizer.embedding_dim}
+  stack:
+    num_layers: 1
+    num_heads: 2
+    dropout: 0.1
+    feedforward_dim: 2048
+
+head:
+  _target_: gut_former.models.components.LinearHead
+  embedding_dim: ${..tokenizer.embedding_dim}
