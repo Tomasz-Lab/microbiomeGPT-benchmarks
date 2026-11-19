@@ -82,6 +82,15 @@ def compositional_table_wrong_sum() -> pd.DataFrame:
 
 
 @pytest.fixture
+def compositional_table_negative() -> pd.DataFrame:
+    """Invalid compositional table: rows s2 and s3 contain negative values, yet every row sums to 1.0."""
+    return pd.DataFrame(
+        {"species_a": [0.5, -0.2, 1.1], "species_b": [0.5, 1.2, -0.1]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
 def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 

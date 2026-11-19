@@ -56,8 +56,14 @@ class CompositionalTable(ModalityKind):
             raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
+        self._check_non_negative(data, name)
         self._check_rows_sum_to_total(data, name)
+
         return data
+
+    def _check_non_negative(self, data: pd.DataFrame, name: str) -> None:
+        if not (data.to_numpy() >= 0).all():
+            raise ValueError(f"Modality '{name}': all values must be non-negative")
 
     def _check_rows_sum_to_total(self, data: pd.DataFrame, name: str) -> None:
         # skipna=False: a row with NaN sums to NaN, and NaN > x is False,
