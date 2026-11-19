@@ -55,6 +55,33 @@ def tables() -> dict[str, pd.DataFrame]:
 
 
 @pytest.fixture
+def compositional_table() -> pd.DataFrame:
+    """Valid compositional table: every row sums to 1.0."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0], "species_b": [0.5, 0.8, 0.0]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
+def compositional_table_within_tolerance() -> pd.DataFrame:
+    """Compositional table whose rows deviate slightly from 1.0 (1.001, 0.9999, 1.0)."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0], "species_b": [0.501, 0.7999, 0.0]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
+def compositional_table_wrong_sum() -> pd.DataFrame:
+    """Invalid compositional table: rows s2 (0.9) and s3 (1.2) do not sum to 1.0, s1 does."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 0.9], "species_b": [0.5, 0.7, 0.3]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
 def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 

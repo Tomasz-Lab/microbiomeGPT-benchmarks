@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 class ModalityKind(ABC):
     @abstractmethod
-    def validate(self, data: Any, name: str) -> Any:
+    def validate(self, data: Any) -> Any:
         pass
 
     @abstractmethod

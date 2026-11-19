@@ -9,6 +9,29 @@ from data.modalities.base import ModalityKind
 type MissingPolicy = Literal["fill_zero", "error", "keep_nan"]
 
 
+class RowsNotSumToTotalError(ValueError):
+    """Raised when some rows of a CompositionalTable do not sum to its total.
+
+    Attributes:
+        modality: Name of the modality that failed validation.
+        row_sums: Sums of the offending rows, indexed by sample id.
+        total: Expected row sum.
+        tolerance: Allowed absolute deviation from `total`.
+    """
+
+    def __init__(self, modality: str, row_sums: pd.Series, total: float, tolerance: float) -> None:
+        self.modality = modality
+        self.row_sums = row_sums
+        self.total = total
+        self.tolerance = tolerance
+        preview = ", ".join(f"{i}={s:.6g}" for i, s in row_sums.head(5).items())
+        more = f" (+{len(row_sums) - 5} more)" if len(row_sums) > 5 else ""
+        super().__init__(
+            f"Modality '{modality}': {len(row_sums)} sample(s) do not sum to "
+            f"{total} ± {tolerance}: {preview}{more}"
+        )
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
@@ -33,8 +56,16 @@ class CompositionalTable(ModalityKind):
             raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
-        # TODO: checks (missing policy, non-negative values, row sums) come in a separate PR.
+        self._check_rows_sum_to_total(data, name)
         return data
+
+    def _check_rows_sum_to_total(self, data: pd.DataFrame, name: str) -> None:
+        # skipna=False: a row with NaN sums to NaN, and NaN > x is False,
+        # so such rows are excluded from the check (consistent with "keep_nan").
+        row_sums = data.sum(axis=1, skipna=False)
+        bad = (row_sums - self.total).abs() > self.tolerance
+        if bad.any():
+            raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.tolerance)
 
     def select_samples(self, data: pd.DataFrame, ids: Sequence[str]) -> pd.DataFrame:
         return data.loc[data.index.intersection(ids)]
