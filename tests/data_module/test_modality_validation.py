@@ -52,6 +52,13 @@ def test_check_is_numeric_rejects_strings_mixed_with_ints(compositional_table_mi
     assert list(exc_info.value.column_dtypes.index) == ["species_b"]
 
 
+def test_check_is_numeric_rejects_bool(compositional_table_bool):
+    with pytest.raises(NonNumericColumnsError) as exc_info:
+        KIND._check_is_numeric(compositional_table_bool, "taxonomy")
+
+    assert list(exc_info.value.column_dtypes.index) == ["species_b"]
+
+
 def test_check_no_missing_accepts_data_without_nan(compositional_table):
     KIND._check_no_missing(compositional_table, "taxonomy")
 

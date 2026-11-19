@@ -107,6 +107,15 @@ def compositional_table_mixed_types() -> pd.DataFrame:
 
 
 @pytest.fixture
+def compositional_table_bool() -> pd.DataFrame:
+    """Invalid compositional table: column species_b is bool, species_a is float."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0], "species_b": [True, False, False]},
+        index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
 def compositional_table_missing() -> pd.DataFrame:
     """Invalid compositional table: rows s2 and s3 contain NaN, s1 does not."""
     return pd.DataFrame(

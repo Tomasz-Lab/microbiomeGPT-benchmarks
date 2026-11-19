@@ -50,7 +50,7 @@ class NegativeValuesError(ValueError):
 
 
 class NonNumericColumnsError(TypeError):
-    """Raised when some columns of a CompositionalTable are not numeric.
+    """Raised when some columns of a CompositionalTable are not int or float (e.g. bool, str).
 
     Attributes:
         modality: Name of the modality that failed validation.
@@ -64,7 +64,7 @@ class NonNumericColumnsError(TypeError):
         more = f" (+{len(column_dtypes) - 5} more)" if len(column_dtypes) > 5 else ""
         super().__init__(
             f"Modality '{modality}': {len(column_dtypes)} column(s) are not numeric "
-            f"(all columns must be numeric): {preview}{more}"
+            f"(all columns must be int or float): {preview}{more}"
         )
 
 
@@ -114,7 +114,11 @@ class CompositionalTable(ModalityKind):
         return data
 
     def _check_is_numeric(self, data: pd.DataFrame, name: str) -> None:
-        bad = ~data.dtypes.map(pd.api.types.is_numeric_dtype).astype(bool)
+        # Only int or float columns are allowed; bool, complex, strings etc. are rejected.
+        is_int_or_float = data.dtypes.map(
+            lambda d: pd.api.types.is_integer_dtype(d) or pd.api.types.is_float_dtype(d)
+        )
+        bad = ~is_int_or_float.astype(bool)
         if bad.any():
             raise NonNumericColumnsError(name, data.dtypes[bad])
 
