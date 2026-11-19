@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from gut_former.utils.hydra_utils import instantiate
+from mgptbench.utils.hydra_utils import instantiate
 
 
 def test_instantiate_builds_allowed_target():
@@ -17,7 +17,7 @@ def test_instantiate_builds_allowed_target():
     "config",
     [
         {"_target_": "os.system", "command": "echo hi"},
-        {"_target_": "gut_former.loss.CompositeLoss", "inner": [{"_target_": "os.system"}]},
+        {"_target_": "mgptbench.loss.CompositeLoss", "inner": [{"_target_": "os.system"}]},
     ],
 )
 def test_instantiate_rejects_and_logs_disallowed_target(config, caplog):

@@ -5,7 +5,7 @@ import pytest
 import torch
 from hydra.core.hydra_config import HydraConfig
 
-from gut_former.run_inference import run_inference
+from mgptbench.run_inference import run_inference
 
 pytestmark = pytest.mark.integration
 
@@ -46,7 +46,7 @@ def test_inference_without_checkpoint_writes_no_predictions(cfg_infer, tmp_path)
 def test_inference_without_prediction_writer_fails_before_loading(cfg_infer, tmp_path):
     # Given: a trainer override that drops the PredictionWriter
     cfg_infer.task.checkpoint_path = str(tmp_path / "missing.ckpt")
-    cfg_infer.trainer.callbacks = [{"_target_": "gut_former.callbacks.RunLogger"}]
+    cfg_infer.trainer.callbacks = [{"_target_": "mgptbench.callbacks.RunLogger"}]
     HydraConfig().set_config(cfg_infer)
 
     # When / Then

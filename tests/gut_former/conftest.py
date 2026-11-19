@@ -10,7 +10,7 @@ from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, open_dict
 
-from gut_former.run_training import run_training
+from mgptbench.run_training import run_training
 from settings.hydra import CONFIG_NAME, CONFIG_PATH, VERSION_BASE
 
 

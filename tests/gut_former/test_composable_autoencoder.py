@@ -2,9 +2,9 @@ import pytest
 import torch
 from torch import Tensor
 
-from gut_former.models import Decoder, Encoder, Head, Latent, Tokenizer
-from gut_former.models.autoencoder import ComposableAutoEncoder
-from gut_former.schema import DataSchema
+from mgptbench.models import Decoder, Encoder, Head, Latent, Tokenizer
+from mgptbench.models.autoencoder import ComposableAutoEncoder
+from mgptbench.schema import DataSchema
 
 EMBEDDING_DIM = 3
 LATENT_SIZE = 2

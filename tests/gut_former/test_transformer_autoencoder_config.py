@@ -2,8 +2,8 @@ import pytest
 import torch
 from hydra import compose, initialize_config_dir
 
-from gut_former.models.autoencoder import ComposableAutoEncoder, GutFormer
-from gut_former.models.components import (
+from mgptbench.models.autoencoder import ComposableAutoEncoder, GutFormer
+from mgptbench.models.components import (
     FeatureEmbeddingTokenizer,
     JointTransformerEncoder,
     LinearHead,
@@ -11,8 +11,8 @@ from gut_former.models.components import (
     PooledLinearLatent,
     SharedTransformerDecoder,
 )
-from gut_former.schema import DataSchema
-from gut_former.utils.hydra_utils import cfg_to_plain_dict, instantiate
+from mgptbench.schema import DataSchema
+from mgptbench.utils.hydra_utils import cfg_to_plain_dict, instantiate
 from settings.hydra import CONFIG_NAME, CONFIG_PATH, VERSION_BASE
 
 BATCH_SIZE = 2

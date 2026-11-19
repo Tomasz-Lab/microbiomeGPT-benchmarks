@@ -1,4 +1,4 @@
-_target_: gut_former.run_inference.run_inference
+_target_: mgptbench.run_inference.run_inference
 _partial_: true
 
 name: gut_former_inference

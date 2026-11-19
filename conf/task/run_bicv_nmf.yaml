@@ -1,4 +1,4 @@
-_target_: gut_former.nmf.run_bicv.run_bicv_task
+_target_: mgptbench.nmf.run_bicv.run_bicv_task
 _partial_: true
 
 name: run_bicv_nmf

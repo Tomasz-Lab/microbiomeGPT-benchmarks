@@ -1,6 +1,6 @@
 import pytest
 
-from gut_former.system import AutoEncoderSystem
+from mgptbench.system import AutoEncoderSystem
 
 
 def test_rejects_a_model_that_is_not_an_autoencoder():

@@ -5,8 +5,8 @@ import torch
 from omegaconf import OmegaConf
 from torch import Tensor, nn
 
-from gut_former.models.autoencoder import ComposableAutoEncoder
-from gut_former.models.components import (
+from mgptbench.models.autoencoder import ComposableAutoEncoder
+from mgptbench.models.components import (
     FeatureEmbeddingTokenizer,
     JointTransformerEncoder,
     LinearHead,
@@ -15,8 +15,8 @@ from gut_former.models.components import (
     Pooling,
     SharedTransformerDecoder,
 )
-from gut_former.models.components._transformer_stack import TransformerStack
-from gut_former.schema import DataSchema
+from mgptbench.models.components._transformer_stack import TransformerStack
+from mgptbench.schema import DataSchema
 
 EMBEDDING_DIM = 8
 LATENT_SIZE = 4

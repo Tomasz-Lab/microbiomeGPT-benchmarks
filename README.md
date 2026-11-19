@@ -35,7 +35,7 @@ You can interact with the virtual environment in two ways:
 ```bash
 uv run <command>
 # Examples:
-# uv run python src/gut_former/main.py --help
+# uv run python src/mgptbench/main.py --help
 # uv run pytest
 ```
 
@@ -72,7 +72,7 @@ A sample dataset (`dataset.name=sample`) is included in the repository to get st
 All workflows run through the Hydra entry point:
 
 ```bash
-uv run python src/gut_former/main.py experiment=<experiment> [key=value ...]
+uv run python src/mgptbench/main.py experiment=<experiment> [key=value ...]
 ```
 
 The default experiment is `nmf_pathways`. Available experiments are:
@@ -92,7 +92,7 @@ also compose `datamodule` and `trainer`). Override their settings using dotted k
 resolved settings without running a workflow:
 
 ```bash
-uv run python src/gut_former/main.py --cfg job experiment=gut_former_training
+uv run python src/mgptbench/main.py --cfg job experiment=gut_former_training
 ```
 
 Hydra does not change the working directory. Each run writes its workflow outputs and Hydra
@@ -103,11 +103,11 @@ configuration/log files under
 ## 🧠 Model
 
 Training and inference run on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable):
-`AutoEncoderSystem` (`src/gut_former/system.py`) holds the training, validation and prediction
-steps, and `BacteriaDataModule` (`src/gut_former/datamodule.py`) loads and splits the data. Both
+`AutoEncoderSystem` (`src/mgptbench`) holds the training, validation and prediction
+steps, and `BacteriaDataModule` (`src/mgptbench`) loads and splits the data. Both
 can be used directly from notebooks or HPC scripts without Hydra.
 
-After `setup()`, the data module exposes a `DataSchema` (`src/gut_former/schema.py`) with the
+After `setup()`, the data module exposes a `DataSchema` (`src/mgptbench`) with the
 feature names of each modality. The model takes the schema and reads its input sizes from
 it, so the runners don't pass data dimensions to the model.
 
@@ -118,12 +118,12 @@ with all its hyperparameters, sizes included. New models compose their own compo
 `conf/model/` and expose their settings there.
 
 `conf/model/transformer_autoencoder.yaml` is the configurable counterpart for experiments: the
-same architecture built from the reusable components in `src/gut_former/models/components/`,
+same architecture built from the reusable components in `src/mgptbench`,
 with GutFormer's values written out. Select it with `model=transformer_autoencoder` and override
 any setting, for example:
 
 ```bash
-uv run python src/gut_former/main.py experiment=gut_former_training model=transformer_autoencoder \
+uv run python src/mgptbench/main.py experiment=gut_former_training model=transformer_autoencoder \
   model.tokenizer.embedding_dim=64 model.encoder.stacks.0.num_layers=2 model.latent.latent_size=32
 ```
 
@@ -140,7 +140,7 @@ To try another training system, add a config to `conf/system/` and select it wit
 ### Train from scratch
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=gut_former_training \
   dataset.name=sample \
   trainer.max_epochs=55
@@ -181,7 +181,7 @@ Resume an interrupted run from a Lightning checkpoint (`trainer.max_epochs` is t
 number of additional epochs):
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=gut_former_training \
   trainer.max_epochs=100 \
   task.resume_from=/path/to/checkpoints/last.ckpt
@@ -198,7 +198,7 @@ branch off instead, copy the checkpoint to a new folder first.
 Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=gut_former_training \
   dataset.name=my_dataset \
   trainer.max_epochs=1000 \
@@ -214,7 +214,7 @@ files store no feature names, so they are loaded with a warning instead.
 Inference requires a trained checkpoint, either a Lightning `.ckpt` or a legacy `.pt` file:
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=gut_former_inference \
   dataset.name=sample \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
@@ -235,13 +235,13 @@ space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
 
 ### Legacy scripts
 
-The original scripts are kept in `src/gut_former/legacy/` and run with the `*_legacy`
+The original scripts are kept in `src/mgptbench` and run with the `*_legacy`
 experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
 `{date}_{dataset}_checkpoint.pt` state dict:
 
 ```bash
-uv run python src/gut_former/main.py experiment=gut_former_training_legacy task.epochs=55
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py experiment=gut_former_training_legacy task.epochs=55
+uv run python src/mgptbench/main.py \
   experiment=gut_former_inference_legacy \
   task.checkpoint_path=/path/to/checkpoint.pt
 ```
@@ -251,7 +251,7 @@ uv run python src/gut_former/main.py \
 NMF decomposes microbiome data into latent signatures. Supports both pathway and taxonomy data, with optional filtering by health status.
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=nmf_pathways \
   dataset.name=sample
 ```
@@ -271,10 +271,10 @@ overridden with:
 
 ```bash
 # Pathway NMF, all samples
-uv run python src/gut_former/main.py experiment=nmf_pathways dataset.name=sample
+uv run python src/mgptbench/main.py experiment=nmf_pathways dataset.name=sample
 
 # Taxonomy NMF, healthy samples only
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=nmf_pathways \
   dataset.kind=taxonomy \
   dataset.name=sample \
@@ -292,7 +292,7 @@ NMF outputs are saved in the Hydra run directory:
 Bi-Cross-Validation selects the optimal number of NMF signatures for pathway data by evaluating reconstruction quality on held-out data blocks across a range of ranks. For taxonomy, the number of signatures is established in the literature.
 
 ```bash
-uv run python src/gut_former/main.py \
+uv run python src/mgptbench/main.py \
   experiment=bicv_pathways \
   dataset.name=sample
 ```
@@ -318,7 +318,7 @@ Generate an interactive Sweetviz report with dataset summaries, column distribut
 associations:
 
 ```bash
-uv run python src/gut_former/main.py task=run_data_profiling
+uv run python src/mgptbench/main.py task=run_data_profiling
 ```
 
 By default, this profiles `data/metadata_sample.csv`. Set `task.path=path/to/data.csv` to use

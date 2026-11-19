@@ -12,7 +12,7 @@ default_root_dir: ${hydra:runtime.output_dir}
 profiler: null
 
 callbacks:
-  - _target_: gut_former.callbacks.RunLogger
+  - _target_: mgptbench.callbacks.RunLogger
 
   # D:0001
   - _target_: lightning.pytorch.callbacks.ModelCheckpoint
@@ -34,7 +34,7 @@ callbacks:
     enable_version_counter: false
 
   # D: 0003 checkpoint paths and sha256 to every logger
-  - _target_: gut_former.callbacks.CheckpointLogger
+  - _target_: mgptbench.callbacks.CheckpointLogger
 
 
 logger:

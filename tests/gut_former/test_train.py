@@ -12,8 +12,8 @@ import yaml
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import open_dict, read_write
 
-from gut_former.run_training import run_training
-from gut_former.utils.data_state import file_sha256
+from mgptbench.run_training import run_training
+from mgptbench.utils.data_state import file_sha256
 
 pytestmark = pytest.mark.integration
 

@@ -8,7 +8,7 @@ then renamed to the GutFormer component names; the parameters that the original 
 but never used in forward (`encoder_layer`, `final_encoder_layer`, `decoder_layer`,
 `latent_norm`) are not included.
 
-Note also that "gut_former" can stay in the name of this file after the package name refactor.
+Note also that "mgptbench" can stay in the name of this file after the package name refactor.
 """
 
 from functools import partial
@@ -18,7 +18,7 @@ import pytest
 import torch
 from omegaconf import OmegaConf
 
-from gut_former.models.autoencoder import (
+from mgptbench.models.autoencoder import (
     ComposableAutoEncoder,
     GutFormer,
     GutFormerDecoder,
@@ -27,8 +27,8 @@ from gut_former.models.autoencoder import (
     GutFormerLatent,
     GutFormerTokenizer,
 )
-from gut_former.schema import DataSchema
-from gut_former.utils.hydra_utils import cfg_to_plain_dict, instantiate
+from mgptbench.schema import DataSchema
+from mgptbench.utils.hydra_utils import cfg_to_plain_dict, instantiate
 from settings.hydra import CONFIG_PATH
 
 REFERENCE_PATH = Path(__file__).parents[1] / "data" / "gut_former_reference.pt"
@@ -76,10 +76,8 @@ def test_frozen_gutformer_components_reproduce_saved_reference_outputs(reference
 @torch.no_grad()
 def test_gut_former_config_builds_the_frozen_model_at_original_sizes(reference):
     # Given
-    # [purbancz] Built from conf/model/gut_former.yaml as the training runner does
-    model_schema = cfg_to_plain_dict(
-        OmegaConf.load(Path(CONFIG_PATH) / "model" / "gut_former.yaml")
-    )
+    # [purbancz] Built from conf/model/mgptbench.yaml as the training runner does
+    model_schema = cfg_to_plain_dict(OmegaConf.load(Path(CONFIG_PATH) / "model" / "mgptbench.yaml"))
     model_schema["data_schema"] = DataSchema.from_dict(reference["feature_names"]).to_config()
 
     # When
