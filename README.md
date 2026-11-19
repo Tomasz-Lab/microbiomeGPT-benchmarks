@@ -1,11 +1,15 @@
-# GUT-FORMer
+# mGPTbench
 
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/License-CC_BY_NC_SA_4.0-green)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange)
 ![Ruff](https://img.shields.io/badge/code_style-ruff-purple)
 
-GUT-FORMer is a Transformer-based model that jointly encodes microbiome taxonomy (which organisms are present) and functional pathways (what they are doing) into a shared latent space. It learns to reconstruct both modalities simultaneously, enabling cross-modal prediction and compact microbiome embeddings.
+mGPTbench benchmarks candidate models for microbiomeGPT, a foundation model of the human gut
+microbiome. The models learn representations of microbiome samples from taxonomy (which
+organisms are present), functional pathways (what they are doing) and other modalities.
+The repository trains, runs and compares them with shared data handling, configuration
+and experiment tracking.
 
 Developed by TomaszLab.
 
