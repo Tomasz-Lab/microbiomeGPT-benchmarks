@@ -8,6 +8,50 @@ from data.modalities.registry import MODALITY_SPECS, ModalityName
 from data.sources.base import Source
 
 
+def _format_ids(ids: Iterable[str]) -> str:
+    # key=str: sample IDs read from CSV can be ints, which also must not break the message.
+    ordered = sorted(ids, key=str)
+    preview = ", ".join(str(i) for i in ordered[:5])
+    if len(ordered) > 5:
+        preview += f" (+{len(ordered) - 5} more)"
+    return preview
+
+
+class DatasetValidationError(ValueError):
+    """Base for MultiOmicsDataset cross-modality validation errors."""
+
+
+class SampleAlignmentError(DatasetValidationError):
+    """Per-sample modalities do not share the same sample IDs.
+
+    Attributes:
+        missing: Modality name -> IDs present in another modality but not in this one.
+    """
+
+    def __init__(self, missing: dict[str, frozenset[str]], n_samples: int) -> None:
+        self.missing = missing
+        lines = ["Modalities are not aligned on sample IDs:"]
+        for name in sorted(missing):
+            ids = missing[name]
+            lines.append(f"  {name}: missing {len(ids)} of {n_samples} ({_format_ids(ids)})")
+        super().__init__("\n".join(lines))
+
+
+class MetadataCoverageError(DatasetValidationError):
+    """Some sample IDs present in the modalities are missing from metadata.
+
+    Attributes:
+        missing: IDs present in the modalities but not in metadata.
+    """
+
+    def __init__(self, missing: frozenset[str]) -> None:
+        self.missing = missing
+        super().__init__(
+            f"Metadata is missing {len(missing)} sample(s) present in modalities: "
+            f"{_format_ids(missing)}"
+        )
+
+
 @dataclass(frozen=True)
 class MultiOmicsDatasetSpec:
     """Recipe for a `MultiOmicsDataset`: which modalities and metadata it consists of and how to load them.
