@@ -93,6 +93,10 @@ class MultiOmicsDataset:
     modalities: Mapping[ModalityName, Modality]
     metadata: pd.DataFrame
 
+    def __post_init__(self) -> None:
+        ids_by_modality = self._per_sample_ids()
+        self._check_samples_aligned(ids_by_modality)
+
     def __getitem__(self, name: str) -> Modality:
         return self.modalities[name]
 
@@ -107,3 +111,23 @@ class MultiOmicsDataset:
     def select_modalities(self, names: Iterable[str]) -> "MultiOmicsDataset":
         modalities = {name: self.modalities[name] for name in names}
         return MultiOmicsDataset(name=self.name, modalities=modalities, metadata=self.metadata)
+
+    def _per_sample_ids(self) -> dict[ModalityName, frozenset[str]]:
+        ids_by_modality = {}
+        for name, modality in self.modalities.items():
+            if modality.spec.scope == "per_sample":
+                ids_by_modality[name] = modality.sample_ids()
+        return ids_by_modality
+
+    def _check_samples_aligned(self, ids_by_modality: dict[ModalityName, frozenset[str]]) -> None:
+        all_ids = set()
+        for ids in ids_by_modality.values():
+            all_ids |= ids
+
+        missing = {}
+        for name, ids in ids_by_modality.items():
+            if ids != all_ids:
+                missing[name] = frozenset(all_ids - ids)
+
+        if missing:
+            raise SampleAlignmentError(missing, n_samples=len(all_ids))
