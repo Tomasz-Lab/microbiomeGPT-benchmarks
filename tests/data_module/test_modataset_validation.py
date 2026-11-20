@@ -3,7 +3,7 @@ import pytest
 
 from data.modalities.base import Modality, ModalitySpec
 from data.modalities.kinds import CompositionalTable
-from data.modataset.base import MultiOmicsDataset, SampleAlignmentError
+from data.modataset.base import MetadataCoverageError, MultiOmicsDataset, SampleAlignmentError
 
 KIND = CompositionalTable(total=1.0, tolerance=1e-6)
 TAXONOMY = ModalitySpec(name="taxonomy", kind=KIND, scope="per_sample")
@@ -46,3 +46,28 @@ def test_dataset_ignores_samples_of_reference_modality(tables):
     tables["reference"] = tables["taxonomy"].rename(index={"s1": "ref1"})
 
     build_dataset(tables, specs=(TAXONOMY, PATHWAYS, REFERENCE))
+
+
+def test_dataset_accepts_metadata_with_extra_samples(tables):
+    tables["metadata"].loc["s4"] = [50, "control"]
+
+    build_dataset(tables)
+
+
+def test_dataset_rejects_metadata_missing_samples(tables):
+    tables["metadata"] = tables["metadata"].drop(index=["s1", "s2"])
+
+    with pytest.raises(MetadataCoverageError) as exc_info:
+        build_dataset(tables)
+
+    assert exc_info.value.missing == {"s1", "s2"}
+
+
+def test_dataset_checks_alignment_before_metadata(tables):
+    tables["pathways"] = tables["pathways"].drop(index="s3")
+    tables["metadata"] = tables["metadata"].drop(index="s1")
+
+    with pytest.raises(SampleAlignmentError) as exc_info:
+        build_dataset(tables)
+
+    assert not isinstance(exc_info.value, MetadataCoverageError)

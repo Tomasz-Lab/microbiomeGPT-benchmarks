@@ -96,6 +96,7 @@ class MultiOmicsDataset:
     def __post_init__(self) -> None:
         ids_by_modality = self._per_sample_ids()
         self._check_samples_aligned(ids_by_modality)
+        self._check_metadata_covers_samples(ids_by_modality)
 
     def __getitem__(self, name: str) -> Modality:
         return self.modalities[name]
@@ -131,3 +132,14 @@ class MultiOmicsDataset:
 
         if missing:
             raise SampleAlignmentError(missing, n_samples=len(all_ids))
+
+    def _check_metadata_covers_samples(
+        self, ids_by_modality: dict[ModalityName, frozenset[str]]
+    ) -> None:
+        metadata_ids = set(self.metadata.index)
+        missing = set()
+        for ids in ids_by_modality.values():
+            missing |= ids - metadata_ids
+
+        if missing:
+            raise MetadataCoverageError(frozenset(missing))
