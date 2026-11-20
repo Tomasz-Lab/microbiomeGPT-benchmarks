@@ -1,11 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Any
 
-import hydra
 import lightning.pytorch as L
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection, MinMetric
 
 from gut_former.models.autoencoder import AutoEncoderModel, AutoEncoderOutput
@@ -147,14 +145,7 @@ def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
     model_schema = checkpoint.get("hyper_parameters", {}).get("model_schema", {})
     if "data_schema" not in model_schema:
         raise ValueError(
-            f"Checkpoint {path} has no model_schema.data_schema; it was not saved by this system "
-            "(legacy .pt files go through the gut_former_inference_legacy experiment)."
+            f"Checkpoint {path} has no model_schema.data_schema; it was not saved by this system."
         )
     expected = model_schema["data_schema"]["feature_names"]
     check_schema(DataSchema.from_dict(expected), data_schema)
-
-
-def build_model(model_config, data_schema: DataSchema) -> nn.Module | Any:
-    """Instantiate the model config with the data schema."""
-    # Not instantiate(..., data_schema=...): Hydra would merge the dataclass into the config
-    return hydra.utils.instantiate(model_config, _partial_=True)(data_schema=data_schema)

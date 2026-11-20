@@ -81,8 +81,6 @@ The default experiment is `nmf_pathways`. Available experiments are:
 |---|---|
 | `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
 | `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
-| `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
-| `gut_former_inference_legacy` | Run GUT-FORMer inference with the original script |
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
@@ -160,14 +158,12 @@ Training settings are supplied as Hydra overrides:
 | `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
 | `task.seed` | `0` | Random seed |
 | `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
-| `task.init_weights` | `null` | Model weights to start from (`.ckpt` or legacy `.pt`); optimizer starts fresh |
 
 Outputs in the Hydra run directory:
 
 - `lightning_logs/version_0/metrics.csv` — every metric the model logs (`train_*` and `val_*`),
   written by Lightning's `CSVLogger`. Training and validation values are on separate rows; use
-  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch. The legacy scripts write
-  `{date}_{dataset}_training_stats.csv` instead, with the validation columns named `test_*`.
+  `pd.read_csv(path).groupby("epoch").first()` for one row per epoch.
 - `lightning_logs/version_0/hparams.yaml` — the run's hyperparameters
 - `checkpoints/last.ckpt` and `checkpoints/epoch=…-val_loss=….ckpt` (lowest validation loss)
 
@@ -195,23 +191,12 @@ checkpoint is chosen across all epochs, before and after resuming. Resuming from
 checkpoint of a finished run therefore continues that run and overwrites its `last.ckpt`. To
 branch off instead, copy the checkpoint to a new folder first.
 
-Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
-
-```bash
-uv run python src/gut_former/main.py \
-  experiment=gut_former_training \
-  dataset.name=my_dataset \
-  trainer.max_epochs=1000 \
-  task.init_weights=/path/to/checkpoint.pt
-```
-
-With a Lightning checkpoint, both `task.resume_from` and `task.init_weights` fail early if the
-dataset's taxonomy or pathway columns (names or order) differ from the checkpoint's. Legacy `.pt`
-files store no feature names, so they are loaded with a warning instead.
+`task.resume_from` fails early if the dataset's taxonomy or pathway columns (names or order)
+differ from the checkpoint's.
 
 ### Inference
 
-Inference requires a trained checkpoint, either a Lightning `.ckpt` or a legacy `.pt` file:
+Inference requires a trained Lightning `.ckpt` checkpoint:
 
 ```bash
 uv run python src/gut_former/main.py \
@@ -221,8 +206,7 @@ uv run python src/gut_former/main.py \
 ```
 
 A Lightning checkpoint stores the data schema (feature names per modality), so inference fails
-early if the dataset's taxonomy or pathway columns differ from training. For a legacy `.pt` file the model is
-rebuilt from `model.*` and the dataset, without that check.
+early if the dataset's taxonomy or pathway columns differ from training.
 
 The inference trainer comes from `conf/trainer/inference.yaml`; override it the same way, e.g.
 `trainer.accelerator=cpu`.
@@ -232,19 +216,6 @@ Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
 callback. Its `filenames` setting in `conf/trainer/inference.yaml` maps each model output to a
 file: modality outputs take the dataset's feature names as columns, and other outputs (the latent
 space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
-
-### Legacy scripts
-
-The original scripts are kept in `src/gut_former/legacy/` and run with the `*_legacy`
-experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
-`{date}_{dataset}_checkpoint.pt` state dict:
-
-```bash
-uv run python src/gut_former/main.py experiment=gut_former_training_legacy task.epochs=55
-uv run python src/gut_former/main.py \
-  experiment=gut_former_inference_legacy \
-  task.checkpoint_path=/path/to/checkpoint.pt
-```
 
 ## 🧬 NMF
 
