@@ -10,6 +10,10 @@ class ModalityKind(ABC):
         pass
 
     @abstractmethod
+    def sample_ids(self, data: Any) -> frozenset[str]:
+        pass
+
+    @abstractmethod
     def select_samples(self, data: Any, ids: Sequence[str]) -> Any:
         pass
 
@@ -56,6 +60,9 @@ class Modality:
 
     spec: ModalitySpec
     data: Any
+
+    def sample_ids(self) -> frozenset[str]:
+        return self.spec.kind.sample_ids(self.data)
 
     def select_samples(self, ids: Sequence[str]) -> "Modality":
         return Modality(spec=self.spec, data=self.spec.kind.select_samples(self.data, ids))
