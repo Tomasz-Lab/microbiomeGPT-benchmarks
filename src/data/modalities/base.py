@@ -10,6 +10,10 @@ class ModalityKind(ABC):
         pass
 
     @abstractmethod
+    def sample_ids(self, data: Any) -> frozenset[str]:
+        pass
+
+    @abstractmethod
     def select_samples(self, data: Any, ids: Sequence[str]) -> Any:
         pass
 

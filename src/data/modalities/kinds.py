@@ -143,6 +143,9 @@ class CompositionalTable(ModalityKind):
         if bad.any():
             raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.tolerance)
 
+    def sample_ids(self, data: pd.DataFrame) -> frozenset[str]:
+        return frozenset(data.index)
+
     def select_samples(self, data: pd.DataFrame, ids: Sequence[str]) -> pd.DataFrame:
         return data.loc[data.index.intersection(ids)]
 
@@ -154,8 +157,8 @@ class Graph(ModalityKind):
     def validate(self, data: Any, name: str) -> Any:
         raise NotImplementedError("Graph modalities are not supported yet.")
 
-    def sample_ids(self, data: Any) -> pd.Index:
-        pass
+    def sample_ids(self, data: Any) -> frozenset[str]:
+        raise NotImplementedError("Graph modalities are not supported yet.")
 
     def select_samples(self, data: Any, ids: Sequence[str]) -> Any:
         pass
