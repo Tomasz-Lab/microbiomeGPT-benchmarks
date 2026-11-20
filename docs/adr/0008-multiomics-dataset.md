@@ -50,6 +50,23 @@ Rationale:
 - "Dataset" and "DataLoader" are established PyTorch terms (torch.utils.data.Dataset, DataLoader). Reusing them would suggest our class is a PyTorch dataset with that interface (__getitem__, __len__), which it is not.
 - The MultiOmics prefix keeps the domain object clearly separate from framework-level data utilities. If a PyTorch Dataset is needed later, it can be built from a MultiOmicsDataset as a separate adapter.
 
+3. Cross-modality validation
+
+`MultiOmicsDataset` validates itself in its constructor, so every dataset is checked, including the ones `select_samples` and `select_modalities` return. Two checks run in this order and the first failure is raised:
+1. Alignment: every `per_sample` modality has the same set of sample IDs, otherwise `SampleAlignmentError`. `reference` modalities are not checked.
+2. Metadata coverage: metadata contains every sample ID of the modalities, otherwise `MetadataCoverageError`. Extra metadata rows are allowed and stay in the container.
+
+Alignment goes first because metadata coverage only makes sense once the modalities agree on one sample set.
+
+Each modality kind returns its sample IDs as `frozenset[str]` (`ModalityKind.sample_ids`). IDs are assumed unique; the kind is responsible for that.
+
+The container is strict: there is no mismatch policy yet, and `load_dataset` passes these errors to the caller unchanged.
+
+Deferred:
+- Behaviour with zero per-sample modalities or an empty sample set.
+- A mismatch policy (e.g. intersect and report dropped samples) in `load_dataset`.
+- Sample order for positional alignment, e.g. stacking modalities into tensors.
+
 
 ## Consequences
 
