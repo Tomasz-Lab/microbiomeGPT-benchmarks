@@ -7,8 +7,6 @@ weights, a batch of inputs and the outputs that model produced in eval mode. The
 then renamed to the GutFormer component names; the parameters that the original class registered
 but never used in forward (`encoder_layer`, `final_encoder_layer`, `decoder_layer`,
 `latent_norm`) are not included.
-
-Note also that "mgptbench" can stay in the name of this file after the package name refactor.
 """
 
 from functools import partial

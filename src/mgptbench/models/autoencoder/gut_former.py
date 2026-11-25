@@ -7,8 +7,6 @@ write a new component with a descriptive name and normal config parameters.
 
 As in the original model, every Linear (including the attention output projections) gets
 Xavier initialization; embeddings, layer norms and attention input projections keep their defaults.
-
-The "mgptbench" in the name of this file should also stay after the package refactor.
 """
 
 from functools import partial
