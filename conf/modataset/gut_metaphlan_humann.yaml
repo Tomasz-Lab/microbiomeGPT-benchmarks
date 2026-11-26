@@ -13,4 +13,4 @@ modalities:
 
 metadata:
   _target_: data.sources.files.CsvSource
-  path: ${oc.env:DATASET_DIR,data}/metadata_sample.csv
+  path: ${oc.env:DATASET_DIR,data}/metadata_sample_2.csv

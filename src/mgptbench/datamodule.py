@@ -1,9 +1,11 @@
+from dataclasses import asdict
+
 import lightning.pytorch as L
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from data.modataset.base import MultiOmicsDataset
+from data.splits import Splitter
 from mgptbench.dataset import BacteriaDataset
 from mgptbench.schema import DataSchema
 
@@ -13,6 +15,7 @@ class BacteriaDataModule(L.LightningDataModule):
 
     Args:
         dataset: The loaded dataset.
+        splitter: Assigns samples to train/val/test, from `dataset.metadata`.
         taxonomy: Name of the dataset modality used as the model's taxonomy input.
         pathways: Name of the dataset modality used as the model's pathways input.
     """
@@ -20,33 +23,35 @@ class BacteriaDataModule(L.LightningDataModule):
     def __init__(
         self,
         dataset: MultiOmicsDataset,
+        splitter: Splitter,
         taxonomy: str,
         pathways: str,
         batch_size: int = 16,
-        val_size: float = 0.1,
-        seed: int = 0,
     ):
         super().__init__()
+        self.dataset = dataset
         self.taxonomy: pd.DataFrame = dataset[taxonomy].data.sort_index()
         self.pathways: pd.DataFrame = dataset[pathways].data.sort_index()
 
         self.batch_size = batch_size
-        self.val_size = val_size
-        self.seed = seed
+        self.splitter = splitter
 
     def setup(self, stage: str | None = None):
         if stage in ("fit", "validate", None):
-            # One split of the shared index keeps taxonomy and pathways rows aligned
-            idx_train, idx_val = train_test_split(
-                self.taxonomy.index.to_numpy(), test_size=self.val_size, random_state=self.seed
-            )
+            # One split of the shared index keeps taxonomy and pathways rows aligned.
+            # list(): .loc reads a tuple as (rows, cols), not as a list of labels
+            split_idx = self.splitter.split(self.dataset.metadata)
             self.train_dataset = BacteriaDataset(
-                self.taxonomy.loc[idx_train], self.pathways.loc[idx_train]
+                self.taxonomy.loc[list(split_idx.train)], self.pathways.loc[list(split_idx.train)]
             )
             self.val_dataset = BacteriaDataset(
-                self.taxonomy.loc[idx_val], self.pathways.loc[idx_val]
+                self.taxonomy.loc[list(split_idx.val)], self.pathways.loc[list(split_idx.val)]
             )
-            self.split_ids = {"train": list(idx_train), "val": list(idx_val)}
+            if split_idx.test:
+                self.test_dataset = BacteriaDataset(
+                    self.taxonomy.loc[list(split_idx.test)], self.pathways.loc[list(split_idx.test)]
+                )
+            self.split_ids = asdict(split_idx)
 
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)
