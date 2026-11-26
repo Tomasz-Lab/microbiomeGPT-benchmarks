@@ -29,7 +29,6 @@ TAXONOMY = ModalitySpec(
     name="taxonomy",
     kind=CompositionalTable(
         total=1.0,
-        tolerance=1e-6,
     ),
     scope="per_sample",
 )
@@ -37,7 +36,6 @@ PATHWAYS = ModalitySpec(
     name="pathways",
     kind=CompositionalTable(
         total=1.0,
-        tolerance=1e-6,
     ),
     scope="per_sample",
 )
@@ -132,6 +130,15 @@ def compositional_table_missing() -> pd.DataFrame:
     return pd.DataFrame(
         {"species_a": [0.5, np.nan, np.nan], "species_b": [0.5, 0.8, np.nan]},
         index=pd.Index(SAMPLE_IDS, name="sample_id"),
+    )
+
+
+@pytest.fixture
+def compositional_table_duplicate_ids() -> pd.DataFrame:
+    """Invalid compositional table: sample ids s1 and s2 occur twice, s3 once."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0, 0.5, 0.2], "species_b": [0.5, 0.8, 0.0, 0.5, 0.8]},
+        index=pd.Index(["s1", "s2", "s3", "s1", "s2"], name="sample_id"),
     )
 
 

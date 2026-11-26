@@ -11,8 +11,8 @@ default_root_dir: ${hydra:runtime.output_dir}
 profiler: null
 
 callbacks:
-  - _target_: gut_former.callbacks.RunLogger
-  - _target_: gut_former.callbacks.PredictionWriter
+  - _target_: mgptbench.callbacks.RunLogger
+  - _target_: mgptbench.callbacks.PredictionWriter
     output_dir: ${hydra:runtime.output_dir}
     # Prediction output -> file; modality outputs use the dataset's feature names as columns
     filenames:

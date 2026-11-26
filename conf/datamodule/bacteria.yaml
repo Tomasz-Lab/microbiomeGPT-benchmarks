@@ -1,4 +1,4 @@
-_target_: gut_former.datamodule.BacteriaDataModule
+_target_: mgptbench.datamodule.BacteriaDataModule
 _partial_: true  # the loaded dataset is passed in by the task
 
 # Which dataset modality feeds each model input

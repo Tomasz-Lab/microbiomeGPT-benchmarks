@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from data.modalities.base import ModalityKind
@@ -27,11 +28,18 @@ class ModalityValidationError(ValueError):
 class RowsNotSumToTotalError(ModalityValidationError):
     """Raised when some rows do not sum to `total`; offenders are the row sums, by sample id."""
 
-    def __init__(self, modality: str, row_sums: pd.Series, total: float, tolerance: float) -> None:
+    def __init__(
+        self, modality: str, row_sums: pd.Series, total: float, rtol: float, atol: float
+    ) -> None:
         self.total = total
-        self.tolerance = tolerance
+        self.rtol = rtol
+        self.atol = atol
+        allowed = atol + rtol * total
         super().__init__(
-            modality, row_sums, f"sample(s) do not sum to {total} ± {tolerance}", ".6g"
+            modality,
+            row_sums,
+            f"sample(s) do not sum to {total} ± {allowed:.3g} (rtol={rtol}, atol={atol})",
+            ".6g",
         )
 
 
@@ -55,9 +63,7 @@ class MissingValuesError(ModalityValidationError):
     """Raised when some rows contain NaN; offenders are the NaN counts, by sample id."""
 
     def __init__(self, modality: str, missing_counts: pd.Series) -> None:
-        super().__init__(
-            modality, missing_counts, "sample(s) contain missing values (missing='error')"
-        )
+        super().__init__(modality, missing_counts, "sample(s) contain missing values")
 
 
 class InvalidColumnNamesError(ModalityValidationError):
@@ -70,31 +76,45 @@ class InvalidColumnNamesError(ModalityValidationError):
         )
 
 
+class DuplicateSampleIdsError(ModalityValidationError):
+    """Raised when some sample ids occur more than once; offenders are their counts, by sample id."""
+
+    def __init__(self, modality: str, id_counts: pd.Series) -> None:
+        super().__init__(modality, id_counts, "sample id(s) are not unique, occurrences")
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
 
     Attributes:
         total: Value every row sums to (e.g. 1.0 for relative abundance, 100 for percent).
-        tolerance: Allowed absolute deviation of a row sum from `total`.
+        rtol: Allowed deviation of a row sum from `total`, relative to `total`.
+            Scales with the unit, so the same value fits fractions (total=1) and percent (total=100).
+        atol: Allowed absolute deviation of a row sum from `total`, added to `rtol * total`.
+            A row passes when `np.isclose(row_sum, total, rtol=rtol, atol=atol)`.
         column_pattern: Regex every column name must fully match (e.g. MetaPhlAn 'k__...|s__...').
             Catches tables from another tool, mixed naming conventions and empty or unnamed columns.
             None skips the check.
     """
 
     total: float
-    tolerance: float
+    rtol: float = 1e-4
+    atol: float = 1e-8
     column_pattern: str | None = None
 
     def __post_init__(self) -> None:
         if self.total <= 0:
             raise ValueError(f"total must be positive, got {self.total}")
-        if self.tolerance < 0:
-            raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
+        if self.rtol < 0:
+            raise ValueError(f"rtol must be non-negative, got {self.rtol}")
+        if self.atol < 0:
+            raise ValueError(f"atol must be non-negative, got {self.atol}")
         if self.column_pattern is not None:
             re.compile(self.column_pattern)
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
+        self._check_unique_sample_ids(data, name)
         if self.column_pattern is not None:
             self._check_column_names(data, name)
         self._check_is_numeric(data, name)
@@ -103,6 +123,12 @@ class CompositionalTable(ModalityKind):
         self._check_rows_sum_to_total(data, name)
 
         return data
+
+    def _check_unique_sample_ids(self, data: pd.DataFrame, name: str) -> None:
+        id_counts = data.index.value_counts(sort=False)
+        bad = id_counts > 1
+        if bad.any():
+            raise DuplicateSampleIdsError(name, id_counts[bad])
 
     def _check_column_names(self, data: pd.DataFrame, name: str) -> None:
         pattern = re.compile(self.column_pattern)
@@ -136,12 +162,10 @@ class CompositionalTable(ModalityKind):
             raise NegativeValuesError(name, data[bad].min(axis=1))
 
     def _check_rows_sum_to_total(self, data: pd.DataFrame, name: str) -> None:
-        # skipna=False: a row with NaN sums to NaN, and NaN > x is False,
-        # so such rows are excluded from the check (consistent with "keep_nan").
-        row_sums = data.sum(axis=1, skipna=False)
-        bad = (row_sums - self.total).abs() > self.tolerance
+        row_sums = data.sum(axis=1)
+        bad = ~np.isclose(row_sums, self.total, rtol=self.rtol, atol=self.atol)
         if bad.any():
-            raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.tolerance)
+            raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.rtol, self.atol)
 
     def sample_ids(self, data: pd.DataFrame) -> frozenset[str]:
         return frozenset(data.index)
