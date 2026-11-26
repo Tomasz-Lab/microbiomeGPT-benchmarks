@@ -83,15 +83,6 @@ The default experiment is `nmf_pathways`. Available experiments are:
 
 | Experiment | Workflow |
 |---|---|
-<<<<<<< HEAD
-| `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
-| `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
-| `nmf_pathways` | Run NMF (pathways by default) |
-| `bicv_pathways` | Select an NMF rank using bi-cross-validation |
-
-Experiments compose the `task`, `model`, and `modataset` config groups (the GUT-FORMer experiments
-also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `modataset=gut_sylph_humann` or
-=======
 | `autoencoder_training` | Train an autoencoder, GUT-FORMer by default (PyTorch Lightning) |
 | `autoencoder_inference` | Run inference from an autoencoder checkpoint (PyTorch Lightning) |
 | `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
@@ -101,7 +92,6 @@ also compose `datamodule` and `trainer`). Override their settings using dotted k
 
 Experiments compose the `task`, `model`, and `dataset` config groups (the autoencoder experiments
 also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
->>>>>>> develop
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
