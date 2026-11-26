@@ -100,3 +100,14 @@ def dataset(tables) -> MultiOmicsDataset:
         },
         metadata=tables["metadata"],
     )
+
+
+@pytest.fixture
+def metadata() -> pd.DataFrame:
+    """Per-sample metadata for splitters: 40 samples, 28 "control" and 12 "IBD" (70/30).
+
+    Sizes are chosen so fractions of 0.25 give whole numbers of samples per class,
+    and 0.25 is exact in floating point, so sklearn's rounding adds no extra sample.
+    """
+    index = pd.Index([f"s{i}" for i in range(40)], name="sample_id")
+    return pd.DataFrame({"condition": ["control"] * 28 + ["IBD"] * 12}, index=index)
