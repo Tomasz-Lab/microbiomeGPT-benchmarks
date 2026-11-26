@@ -14,7 +14,7 @@ METACYC_PATHWAY = r"[^\s:]+: .+"
 TAXONOMY = ModalitySpec(
     name="taxonomy",
     kind=CompositionalTable(
-        total=1.0,
+        total=100.0,
         tolerance=1e-6,
         column_pattern=METAPHLAN_SPECIES,
     ),
