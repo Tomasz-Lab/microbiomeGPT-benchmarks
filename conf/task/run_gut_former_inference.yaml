@@ -1,8 +1,0 @@
-_target_: gut_former.run_inference.run_inference
-_partial_: true
-
-name: gut_former_inference
-
-# Lightning .ckpt from gut_former_training (best or last); the model is rebuilt from it
-checkpoint_path: null
-verbose: true

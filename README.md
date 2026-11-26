@@ -83,15 +83,6 @@ The default experiment is `nmf_pathways`. Available experiments are:
 
 | Experiment | Workflow |
 |---|---|
-<<<<<<< HEAD
-| `gut_former_training` | Train GUT-FORMer (PyTorch Lightning) |
-| `gut_former_inference` | Run GUT-FORMer inference (PyTorch Lightning) |
-| `nmf_pathways` | Run NMF (pathways by default) |
-| `bicv_pathways` | Select an NMF rank using bi-cross-validation |
-
-Experiments compose the `task`, `model`, and `modataset` config groups (the GUT-FORMer experiments
-also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `modataset=gut_sylph_humann` or
-=======
 | `autoencoder_training` | Train an autoencoder, GUT-FORMer by default (PyTorch Lightning) |
 | `autoencoder_inference` | Run inference from an autoencoder checkpoint (PyTorch Lightning) |
 | `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
@@ -99,9 +90,9 @@ also compose `datamodule` and `trainer`). Override their settings using dotted k
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
-Experiments compose the `task`, `model`, and `dataset` config groups (the autoencoder experiments
-also compose `datamodule` and `trainer`). Override their settings using dotted keys, for example `dataset.name=my_dataset` or
->>>>>>> develop
+Experiments compose the `task`, `model`, and `modataset` config groups (the autoencoder experiments
+also compose `datamodule` and `trainer`; the legacy GUT-FORMer experiments use `dataset` instead of
+`modataset`). Swap a group with `modataset=gut_sylph_humann` and override settings using dotted keys, for example
 `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
@@ -156,7 +147,7 @@ To try another training system, add a config to `conf/system/` and select it wit
 ```bash
 uv run python src/mgptbench/main.py \
   experiment=autoencoder_training \
-  dataset.name=sample \
+  modataset=gut_metaphlan_humann \
   trainer.max_epochs=55
 ```
 
@@ -217,7 +208,7 @@ Fine-tune from existing weights, for example on another dataset, with a fresh op
 ```bash
 uv run python src/mgptbench/main.py \
   experiment=autoencoder_training \
-  dataset.name=my_dataset \
+  modataset=my_dataset \
   trainer.max_epochs=1000 \
   task.init_weights=/path/to/checkpoint.ckpt
 ```
@@ -232,7 +223,7 @@ Inference requires a trained checkpoint, a Lightning `.ckpt`:
 ```bash
 uv run python src/mgptbench/main.py \
   experiment=autoencoder_inference \
-  dataset.name=sample \
+  modataset=gut_metaphlan_humann \
   task.checkpoint_path=/path/to/checkpoints/last.ckpt
 ```
 
@@ -288,7 +279,7 @@ overridden with:
 
 ```bash
 # Pathway NMF, all samples
-uv run python src/mgptbench/main.py experiment=nmf_pathways dataset.name=sample
+uv run python src/mgptbench/main.py experiment=nmf_pathways modataset=gut_metaphlan_humann
 
 # Taxonomy NMF, healthy samples only
 uv run python src/mgptbench/main.py \
