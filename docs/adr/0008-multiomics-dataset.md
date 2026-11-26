@@ -18,11 +18,11 @@ Dataset recipe (`MultiOmicsDatasetSpec`) is the declaration of a dataset. It des
 
 The recipe is the single source of truth for how a dataset is built. It holds no data and performs no data validation.
 
-Modalities in the recipe are declared by name and source only. The name must be a key in the modality registry (`MODALITY_SPECS` in `src/data/modalities/registry.py`); the recipe checks this when it is constructed, and `load_dataset` takes the spec from the registry. An unknown name fails at construction, before any file is read, and the error lists the registered names.
+Modalities in the recipe are declared by name and source only. The name must be a key in the modality registry (`MODALITIES` in `src/data/modalities/registry.py`); the recipe checks this when it is constructed, and `load_dataset` takes the spec from the registry. An unknown name fails at construction, before any file is read, and the error lists the registered names.
 
 ```yaml
 modalities:
-  taxonomy_metaphlan:            # name from MODALITY_SPECS
+  taxonomy_metaphlan:            # name registered in MODALITIES
     _target_: data.sources.files.CsvSource
     path: ...
 ```
@@ -81,5 +81,5 @@ Negative
 
 - Additional abstraction layer. Contributors must learn the recipe → load → container flow instead of reading a file directly.
 - Strict validation can reject real data. Real datasets often have samples missing from one modality or from the metadata. We need an explicit policy (fail, or intersect and drop with a report); otherwise the strict invariants will block legitimate use.
-- Specs come only from the registry. A spec defined ad hoc (e.g. in a test or notebook) must be registered in `MODALITY_SPECS` before a recipe can use it. In YAML the spec is not visible, only its name.
+- Specs come only from the registry. A spec defined ad hoc (e.g. in a test or notebook) must be added to `ALL_SPECS` in `src/data/modalities/specs.py` before a recipe can use it. In YAML the spec is not visible, only its name.
 - Coupling to Hydra for declaration. Recipes live in Hydra config, so using a dataset outside Hydra (e.g. in a notebook) needs either Hydra's compose API or a plain-Python way to build a MultiOmicsDatasetSpec.

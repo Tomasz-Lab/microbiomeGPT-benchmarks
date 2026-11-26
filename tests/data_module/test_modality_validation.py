@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pandas as pd
 import pytest
 
 from data.modalities.kinds import (
@@ -9,6 +12,7 @@ from data.modalities.kinds import (
     NonNumericColumnsError,
     RowsNotSumToTotalError,
 )
+from data.modalities.registry import MODALITIES
 
 KIND = CompositionalTable(total=1.0)
 
@@ -116,3 +120,13 @@ def test_validate_rejects_rows_not_summing_to_total(compositional_table_wrong_su
         kind.validate(compositional_table_wrong_sum, "taxonomy")
 
     assert list(exc_info.value.offenders.index) == ["s2", "s3"]
+
+
+@pytest.mark.parametrize(
+    ("modality", "sample_file"),
+    [("taxonomy", "taxonomy_sample.csv"), ("pathways", "pathways_sample.csv")],
+)
+def test_registry_spec_accepts_sample_data(modality, sample_file):
+    data = pd.read_csv(Path(__file__).parents[1] / "data" / sample_file, index_col=0)
+
+    MODALITIES.get(modality).validate(data)
