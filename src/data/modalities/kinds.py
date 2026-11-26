@@ -63,9 +63,7 @@ class MissingValuesError(ModalityValidationError):
     """Raised when some rows contain NaN; offenders are the NaN counts, by sample id."""
 
     def __init__(self, modality: str, missing_counts: pd.Series) -> None:
-        super().__init__(
-            modality, missing_counts, "sample(s) contain missing values (missing='error')"
-        )
+        super().__init__(modality, missing_counts, "sample(s) contain missing values")
 
 
 class InvalidColumnNamesError(ModalityValidationError):
