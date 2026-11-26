@@ -2,5 +2,7 @@ _target_: scripts.generate_data_profiling_report.run_data_profiling_report
 _partial_: true
 
 name: run_data_profiling
-source: ${modataset.metadata.source}
+modality: metadata   # "metadata" or a modality name of the selected modataset, e.g. pathways_humann
+source: null         # bypass: any Source, e.g. an unrelated CSV; when set, `modality` is ignored
+# e.g. task.source={_target_:data.sources.files.CsvSource,path:data/metadata_sample_2.csv}
 output: data_profiling_report

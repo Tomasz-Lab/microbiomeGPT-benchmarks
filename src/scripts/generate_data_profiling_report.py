@@ -25,7 +25,13 @@ class _TeeTextIO(TextIOBase):
 
 
 def run_data_profiling_report(cfg: DictConfig, **_: object) -> None:
-    df = hydra.utils.instantiate(cfg.task.source).read()
+    if cfg.task.source is not None:
+        source = hydra.utils.instantiate(cfg.task.source)
+    else:
+        spec = hydra.utils.instantiate(cfg.modataset)  # recipe only, reads nothing
+        name = cfg.task.modality
+        source = spec.metadata if name == "metadata" else spec.modalities[name]
+    df = source.read()
     dropped_columns = []
 
     logs: list[str] = []
