@@ -1,7 +1,7 @@
 from pandas.testing import assert_frame_equal
 
 from data.load import load_dataset
-from data.modalities.registry import MODALITY_SPECS
+from data.modalities.registry import MODALITIES
 from data.modataset.base import MultiOmicsDataset
 
 
@@ -15,7 +15,7 @@ def test_load_dataset_builds_dataset_from_recipe(recipe, tables):
     for name in recipe.modalities:
         modality = dataset[name]
         # Data stays bound to its spec from the registry
-        assert modality.spec is MODALITY_SPECS[name]
+        assert modality.spec is MODALITIES.get(name)
         # Sample id moved from the first column to the index; values are unchanged
         assert_frame_equal(modality.data, tables[name])
 
