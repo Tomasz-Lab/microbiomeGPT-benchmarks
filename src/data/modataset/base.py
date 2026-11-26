@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from data.modalities.base import Modality
-from data.modalities.registry import MODALITY_SPECS, ModalityName
+from data.modalities.registry import MODALITIES, ModalityName
 from data.sources.base import Source
 
 
@@ -16,7 +16,7 @@ class MultiOmicsDatasetSpec:
 
     Attributes:
         name: Dataset name, e.g. "cMD".
-        modalities: Source of each modality, keyed by its name in `MODALITY_SPECS`,
+        modalities: Source of each modality, keyed by its name in the modality registry (`MODALITIES`),
             e.g. "taxonomy_metaphlan" -> CsvSource(...).
         metadata: Source of the per-sample metadata.
     """
@@ -27,12 +27,8 @@ class MultiOmicsDatasetSpec:
 
     def __post_init__(self) -> None:
         # Check names here, so an unknown name fails when the recipe is built, before any file is read.
-        unknown = sorted(set(self.modalities) - set(MODALITY_SPECS))
-        if unknown:
-            raise ValueError(
-                f"Unknown modalities {unknown} in dataset '{self.name}'; "
-                f"registered: {sorted(MODALITY_SPECS)}"
-            )
+        for name in self.modalities:
+            MODALITIES.get(name)
 
 
 @dataclass(frozen=True)
