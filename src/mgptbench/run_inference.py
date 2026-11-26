@@ -3,6 +3,7 @@ import logging
 import hydra
 from omegaconf import DictConfig
 
+from data.load import load_dataset
 from mgptbench.system import verify_checkpoint_schema
 from mgptbench.utils.hydra_utils import load_from_checkpoint
 from mgptbench.utils.log_config import setup_logging
@@ -26,7 +27,8 @@ def run_inference(cfg: DictConfig, **_: object) -> None:
     trainer = hydra.utils.instantiate(cfg.trainer)
     ensure_prediction_writer(trainer)
 
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
+    datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
     datamodule.setup("predict")
 
     verify_checkpoint_schema(cfg.task.checkpoint_path, datamodule.data_schema())

@@ -5,6 +5,7 @@ import lightning.pytorch as L
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
+from data.load import load_dataset
 from mgptbench.system import verify_checkpoint_schema
 from mgptbench.utils.checkpoints import prepare_resume_checkpoint
 from mgptbench.utils.data_state import data_state
@@ -24,7 +25,9 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     L.seed_everything(cfg.task.seed, workers=True)
 
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    dataset_spec = hydra.utils.instantiate(cfg.modataset)
+    dataset = load_dataset(dataset_spec)
+    datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
     datamodule.setup("fit")
     data_schema = datamodule.data_schema()
 
@@ -47,7 +50,10 @@ def run_training(cfg: DictConfig, **_: object) -> None:
             "config": cfg_to_plain_dict(cfg),
             "code": git_state(HydraConfig.get().runtime.output_dir),
             "env": environment_state(trainer),
-            "dataset_stats": data_state(datamodule.input_files, datamodule.split_ids),
+            "dataset_stats": data_state(
+                [source.describe().location for source in dataset.sources.values()],
+                datamodule.split_ids,
+            ),
         }
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)

@@ -4,7 +4,6 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
-import hydra
 import numpy as np
 import pandas as pd
 from hydra.core.hydra_config import HydraConfig
@@ -13,6 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 from sklearn.model_selection import KFold
 
 from mgptbench.nmf.nmf_core import NMF
+from mgptbench.nmf.run_nmf import load_nmf_input
 from mgptbench.utils.log_config import setup_logging
 from mgptbench.utils.metrics import cos_sim, exp_var
 from mgptbench.utils.metrics import l2norm as calc_l2norm
@@ -234,7 +234,7 @@ def run_bicv_task(cfg: DictConfig, **_: object) -> None:
     setup_logging()
     log.info("Starting biCV script..")
 
-    X = hydra.utils.instantiate(cfg.dataset)
+    X = load_nmf_input(cfg)
     log.info("Data loaded | shape: %s", X.shape)
 
     output_path = Path(HydraConfig.get().runtime.output_dir)

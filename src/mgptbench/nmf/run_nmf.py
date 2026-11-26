@@ -7,8 +7,11 @@ from dotenv import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
+from data.load import load_dataset
+from data.modataset.base import MultiOmicsDataset
 from mgptbench.nmf.nmf_core import NMF
-from mgptbench.utils.data_prep import collapse_to_genus, filter_samples, train_val_split
+from mgptbench.utils.data_prep import collapse_to_genus as to_genus
+from mgptbench.utils.data_prep import filter_samples, train_val_split
 from mgptbench.utils.log_config import setup_logging
 
 load_dotenv()
@@ -16,31 +19,31 @@ load_dotenv()
 log = logging.getLogger(__name__)
 
 
-def load_data_nmf_csv(
-    data_path: str,
-    metadata_path: str,
-    kind: str,
+def prepare_nmf_input(
+    dataset: MultiOmicsDataset,
+    modality: str,
     subset: str,
-    pathways_multiplier: int,
-    **_: object,
+    multiplier: float,
+    collapse_to_genus: bool,
 ) -> pd.DataFrame:
-    """Load and preprocess input data based on data type."""
-    df = pd.read_csv(data_path, index_col=0, low_memory=False).fillna(0).sort_index()
-    metadata = pd.read_csv(metadata_path, index_col=0, low_memory=False).sort_index()
-
-    if kind == "pathways":
-        df = df * pathways_multiplier
-
-    df = filter_samples(df, metadata, subset)
-
-    if kind == "taxonomy":
-        df = collapse_to_genus(df)
-
+    """Select one modality of the dataset and turn it into the NMF input matrix."""
+    df = dataset[modality].data.sort_index() * multiplier
+    df = filter_samples(df, dataset.metadata, subset)
+    if collapse_to_genus:
+        df = to_genus(df)
     return df
 
 
-def load_data_nmf_db() -> None:
-    pass
+def load_nmf_input(cfg: DictConfig) -> pd.DataFrame:
+    """Load the configured dataset and prepare the NMF input from `cfg.task`."""
+    dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
+    return prepare_nmf_input(
+        dataset,
+        modality=cfg.task.modality,
+        subset=cfg.task.subset,
+        multiplier=cfg.task.multiplier,
+        collapse_to_genus=cfg.task.collapse_to_genus,
+    )
 
 
 def run_nmf_task(cfg: DictConfig, **_: object) -> None:
@@ -49,7 +52,7 @@ def run_nmf_task(cfg: DictConfig, **_: object) -> None:
     log.info("Starting NMF script..")
 
     # Load & preprocess
-    X = hydra.utils.instantiate(cfg.dataset)
+    X = load_nmf_input(cfg)
     log.info("Data loaded | shape: %s", X.shape)
 
     # Train / val split
@@ -65,8 +68,8 @@ def run_nmf_task(cfg: DictConfig, **_: object) -> None:
     output_path.mkdir(parents=True, exist_ok=True)
 
     n = cfg.model.parameters.n_components
-    ds = cfg.dataset.name
-    tag = f"{cfg.dataset.kind}_{cfg.dataset.subset}"
+    ds = cfg.modataset.name
+    tag = f"{cfg.task.modality}_{cfg.task.subset}"
     pd.DataFrame(nmf_model.H_, columns=X_train.columns).to_csv(
         output_path / f"H_{n}_{ds}_{tag}.csv"
     )
