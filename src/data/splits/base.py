@@ -23,5 +23,5 @@ class Split:
 
 class Splitter(ABC):
     @abstractmethod
-    def split(self, samples: pd.DataFrame) -> Split:
+    def split(self, metadata: pd.DataFrame) -> Split:
         pass
