@@ -1,6 +1,6 @@
 import numpy as np
 
-import gut_former.nmf.run_bicv as bicv
+import mgptbench.nmf.run_bicv as bicv
 
 
 def test_each_fold_is_a_partition_of_X(bicv_folds, synthetic_nmf):
