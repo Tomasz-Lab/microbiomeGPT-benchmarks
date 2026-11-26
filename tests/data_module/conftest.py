@@ -134,6 +134,15 @@ def compositional_table_missing() -> pd.DataFrame:
 
 
 @pytest.fixture
+def compositional_table_duplicate_ids() -> pd.DataFrame:
+    """Invalid compositional table: sample ids s1 and s2 occur twice, s3 once."""
+    return pd.DataFrame(
+        {"species_a": [0.5, 0.2, 1.0, 0.5, 0.2], "species_b": [0.5, 0.8, 0.0, 0.5, 0.8]},
+        index=pd.Index(["s1", "s2", "s3", "s1", "s2"], name="sample_id"),
+    )
+
+
+@pytest.fixture
 def recipe(tmp_path, tables, monkeypatch) -> MultiOmicsDatasetSpec:
     """Declaration of the dummy dataset, reading each table from its own CSV file.
 

@@ -2,6 +2,7 @@ import pytest
 
 from data.modalities.kinds import (
     CompositionalTable,
+    DuplicateSampleIdsError,
     InvalidColumnNamesError,
     MissingValuesError,
     NegativeValuesError,
@@ -86,6 +87,18 @@ def test_check_column_names_rejects_names_not_matching_pattern(
         kind._check_column_names(compositional_table_bad_column_names, "taxonomy")
 
     assert list(exc_info.value.offenders.index) == ["'k__Bacteria|s__Prevotella_copri'", "''"]
+
+
+def test_check_unique_sample_ids_accepts_unique_ids(compositional_table):
+    KIND._check_unique_sample_ids(compositional_table, "taxonomy")
+
+
+def test_check_unique_sample_ids_rejects_duplicates(compositional_table_duplicate_ids):
+    with pytest.raises(DuplicateSampleIdsError) as exc_info:
+        KIND._check_unique_sample_ids(compositional_table_duplicate_ids, "taxonomy")
+
+    assert list(exc_info.value.offenders.index) == ["s1", "s2"]
+    assert list(exc_info.value.offenders) == [2, 2]
 
 
 def test_validate_accepts_valid_data_and_returns_it(compositional_table):

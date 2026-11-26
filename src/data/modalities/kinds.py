@@ -76,6 +76,13 @@ class InvalidColumnNamesError(ModalityValidationError):
         )
 
 
+class DuplicateSampleIdsError(ModalityValidationError):
+    """Raised when some sample ids occur more than once; offenders are their counts, by sample id."""
+
+    def __init__(self, modality: str, id_counts: pd.Series) -> None:
+        super().__init__(modality, id_counts, "sample id(s) are not unique, occurrences")
+
+
 @dataclass(frozen=True)
 class CompositionalTable(ModalityKind):
     """Table with one row per sample whose non-negative values sum to the same total.
@@ -107,6 +114,7 @@ class CompositionalTable(ModalityKind):
             re.compile(self.column_pattern)
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
+        self._check_unique_sample_ids(data, name)
         if self.column_pattern is not None:
             self._check_column_names(data, name)
         self._check_is_numeric(data, name)
@@ -115,6 +123,12 @@ class CompositionalTable(ModalityKind):
         self._check_rows_sum_to_total(data, name)
 
         return data
+
+    def _check_unique_sample_ids(self, data: pd.DataFrame, name: str) -> None:
+        id_counts = data.index.value_counts(sort=False)
+        bad = id_counts > 1
+        if bad.any():
+            raise DuplicateSampleIdsError(name, id_counts[bad])
 
     def _check_column_names(self, data: pd.DataFrame, name: str) -> None:
         pattern = re.compile(self.column_pattern)
