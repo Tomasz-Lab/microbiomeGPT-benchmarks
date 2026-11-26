@@ -1,5 +1,3 @@
-from dataclasses import asdict
-
 import lightning.pytorch as L
 import pandas as pd
 from torch.utils.data import DataLoader
@@ -38,20 +36,18 @@ class BacteriaDataModule(L.LightningDataModule):
 
     def setup(self, stage: str | None = None):
         if stage in ("fit", "validate", None):
-            # One split of the shared index keeps taxonomy and pathways rows aligned.
-            # list(): .loc reads a tuple as (rows, cols), not as a list of labels
-            split_idx = self.splitter.split(self.dataset.metadata)
+            self.split = self.splitter.split(self.dataset.metadata)
             self.train_dataset = BacteriaDataset(
-                self.taxonomy.loc[list(split_idx.train)], self.pathways.loc[list(split_idx.train)]
+                self.taxonomy.loc[list(self.split.train)], self.pathways.loc[list(self.split.train)]
             )
             self.val_dataset = BacteriaDataset(
-                self.taxonomy.loc[list(split_idx.val)], self.pathways.loc[list(split_idx.val)]
+                self.taxonomy.loc[list(self.split.val)], self.pathways.loc[list(self.split.val)]
             )
-            if split_idx.test:
+            if self.split.test:
                 self.test_dataset = BacteriaDataset(
-                    self.taxonomy.loc[list(split_idx.test)], self.pathways.loc[list(split_idx.test)]
+                    self.taxonomy.loc[list(self.split.test)],
+                    self.pathways.loc[list(self.split.test)],
                 )
-            self.split_ids = asdict(split_idx)
 
         if stage in ("predict", None):
             self.predict_dataset = BacteriaDataset(self.taxonomy, self.pathways)

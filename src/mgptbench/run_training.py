@@ -52,7 +52,7 @@ def run_training(cfg: DictConfig, **_: object) -> None:
             "env": environment_state(trainer),
             "dataset_stats": data_state(
                 [source.describe().location for source in dataset.sources.values()],
-                datamodule.split_ids,
+                datamodule.split,
             ),
         }
         for logger in trainer.loggers:
