@@ -86,3 +86,20 @@ def test_check_column_names_rejects_names_not_matching_pattern(
         kind._check_column_names(compositional_table_bad_column_names, "taxonomy")
 
     assert list(exc_info.value.offenders.index) == ["'k__Bacteria|s__Prevotella_copri'", "''"]
+
+
+def test_validate_accepts_valid_data_and_returns_it(compositional_table):
+    kind = CompositionalTable(total=1.0, column_pattern=r"species_\w+")
+
+    result = kind.validate(compositional_table, "taxonomy")
+
+    assert result is compositional_table
+
+
+def test_validate_rejects_rows_not_summing_to_total(compositional_table_wrong_sum):
+    kind = CompositionalTable(total=1.0, column_pattern=r"species_\w+")
+
+    with pytest.raises(RowsNotSumToTotalError) as exc_info:
+        kind.validate(compositional_table_wrong_sum, "taxonomy")
+
+    assert list(exc_info.value.offenders.index) == ["s2", "s3"]
