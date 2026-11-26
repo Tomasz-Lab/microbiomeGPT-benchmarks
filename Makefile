@@ -59,7 +59,7 @@ fix:
 # -----------------------------------------
 
 kernel:
-	uv run python -m ipykernel install --user --name=microbiome-gpt --display-name "Python (microbiome-gpt)"
+	uv run python -m ipykernel install --user --name=mgptbench --display-name "Python (mgptbench)"
 
 jupyter:
 	uv run jupyter notebook
@@ -73,7 +73,7 @@ jupyter:
 # `wandb sync` (which only looks in ./wandb) finds nothing. This finds every wandb/ directory
 # under the output dirs from .env and syncs them. Already synced and online runs are skipped. ~Fasamik39
 # WANDB_DIR sends the CLI's own wandb/ directory and logs to a temp dir instead of the repo root.
-WANDB_SYNC_DIR = $${TMPDIR:-/tmp}/gut-former-wandb-sync
+WANDB_SYNC_DIR = $${TMPDIR:-/tmp}/mgptbench-wandb-sync
 WANDB_SYNC = set -a; [ -f .env ] && . ./.env; set +a; \
 	export WANDB_DIR="$(WANDB_SYNC_DIR)"; mkdir -p "$$WANDB_DIR"; \
 	echo "W&B CLI logs: $$WANDB_DIR/wandb"; \

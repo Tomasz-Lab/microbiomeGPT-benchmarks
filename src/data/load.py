@@ -17,4 +17,9 @@ def load_dataset(dataset_spec: MultiOmicsDatasetSpec) -> MultiOmicsDataset:
     raw_metadata = dataset_spec.metadata.read()
     metadata = raw_metadata.set_index(raw_metadata.columns[0])
 
-    return MultiOmicsDataset(name=dataset_spec.name, modalities=modalities, metadata=metadata)
+    return MultiOmicsDataset(
+        name=dataset_spec.name,
+        modalities=modalities,
+        metadata=metadata,
+        sources={**dataset_spec.modalities, "metadata": dataset_spec.metadata},
+    )

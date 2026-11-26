@@ -17,7 +17,7 @@ we shape the interfaces around these models and extend them as our research requ
 We define two levels of interface:
 
 1. Model level defines the interface any model must implement to plug into our pipeline.
-   It is a single small contract (`gut_former.models.base`):
+   It is a single small contract (`mgptbench.models.base`):
    `MicrobiomeModel.forward(inputs: dict[str, Tensor]) -> RepresentationOutput`.
    It matters most for benchmarks because any model that satisfies it, ours or an external
    baseline, returns a representation of each microbiome sample (`latent`), so it can be
@@ -31,11 +31,11 @@ We define two levels of interface:
     - Each learning method extends `RepresentationOutput` with what its loss needs, and has a
       system that consumes it. Autoencoders return `AutoEncoderOutput`, which adds `reconstructions`
       (keyed by modality); `AutoEncoderSystem` trains `AutoEncoderModel` subclasses
-      (`gut_former.models.autoencoder.base`). Classification is a downstream evaluation of
+      (`mgptbench.models.autoencoder.base`). Classification is a downstream evaluation of
       the latent, not a model here.
 
 2. Component level, for ablations and architectural tests within one learning method.
-   E.g. `ComposableAutoEncoder` (`gut_former.models.autoencoder`) has the architecture
+   E.g. `ComposableAutoEncoder` (`mgptbench.models.autoencoder`) has the architecture
     Tokenizer → Encoder → Latent → Decoder → Head; it is not tied to transformers.
    Each base class fixes only what goes in and out, so one implementation can be swapped
     for another without touching the rest of the model.
@@ -63,13 +63,13 @@ Examples of extensions, planned or possible:
   model), `ContrastiveOutput` (projections of two augmented views of each sample).
 
 The tensor shapes of each interface are documented in the docstrings
-(`gut_former.models.base`, `gut_former.models.autoencoder.base`, `gut_former.models.components`).
-`gut_former.models.components` has one module per kind of component (tokenizer, encoder,
+(`mgptbench.models.base`, `mgptbench.models.autoencoder.base`, `mgptbench.models.components`).
+`mgptbench.models.components` has one module per kind of component (tokenizer, encoder,
 latent, pooling, decoder, head), holding its interface and the implementations that
 models can reuse.
 
 We rebuild the original model from these components as GutFormer
-(`gut_former.models.autoencoder.gut_former`) and freeze it: its classes never change behaviour.
+(`mgptbench.models.autoencoder.gut_former`) and freeze it: its classes never change behaviour.
 We remove the monolithic `BacteriaModel` rather than keep it next to GutFormer.
 A test checks that GutFormer reproduces the outputs saved from the original model
 (`tests/data/gut_former_reference.pt`).
