@@ -1,3 +1,3 @@
 # [purbancz] The original Gut-FORMer model, frozen in code (ADR 0006); nothing to set here.
 # The runner adds data_schema.
-_target_: gut_former.models.autoencoder.GutFormer
+_target_: mgptbench.models.autoencoder.GutFormer

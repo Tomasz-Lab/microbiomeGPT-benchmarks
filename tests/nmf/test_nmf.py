@@ -1,6 +1,6 @@
 import logging
 
-from gut_former.utils.metrics import cos_sim, exp_var
+from mgptbench.utils.metrics import cos_sim, exp_var
 
 log = logging.getLogger(__name__)
 

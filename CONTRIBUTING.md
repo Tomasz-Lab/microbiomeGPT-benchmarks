@@ -34,7 +34,7 @@ make kernel   # Register kernel (one time)
 make jupyter  # Launch Jupyter
 ```
 
-Select kernel "Python (gut-former)" in your notebook.
+Select kernel "Python (mgptbench)" in your notebook.
 
 
 ## Configuration Management Principles
