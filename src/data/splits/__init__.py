@@ -1,4 +1,4 @@
 from data.splits.base import SampleId, Split, Splitter
-from data.splits.splitters import CohortSplitter, RandomSplitter
+from data.splits.splitters import HoldoutCohortSplitter, RandomSplitter
 
-__all__ = ["CohortSplitter", "RandomSplitter", "SampleId", "Split", "Splitter"]
+__all__ = ["HoldoutCohortSplitter", "RandomSplitter", "SampleId", "Split", "Splitter"]
