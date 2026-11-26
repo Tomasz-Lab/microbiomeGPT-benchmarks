@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -43,11 +43,14 @@ class MultiOmicsDataset:
         name: Dataset name, e.g. "cMD" (taken from the spec it was built from).
         modalities: Modalities by name, e.g. "taxonomy_species" -> Modality(spec=TAXONOMY, data=DataFrame).
         metadata: Per-sample metadata indexed by `sample_id`.
+        sources: Source each modality was read from, keyed by modality name, plus "metadata";
+            empty for a dataset built in memory.
     """
 
     name: str
     modalities: Mapping[ModalityName, Modality]
     metadata: pd.DataFrame
+    sources: Mapping[str, Source] = field(default_factory=dict)
 
     def __getitem__(self, name: str) -> Modality:
         return self.modalities[name]
@@ -58,8 +61,17 @@ class MultiOmicsDataset:
             name: modality.select_samples(ids) for name, modality in self.modalities.items()
         }
         metadata = self.metadata.loc[self.metadata.index.intersection(ids)]
-        return MultiOmicsDataset(name=self.name, modalities=modalities, metadata=metadata)
+        return MultiOmicsDataset(
+            name=self.name, modalities=modalities, metadata=metadata, sources=self.sources
+        )
 
     def select_modalities(self, names: Iterable[str]) -> "MultiOmicsDataset":
         modalities = {name: self.modalities[name] for name in names}
-        return MultiOmicsDataset(name=self.name, modalities=modalities, metadata=self.metadata)
+        sources = {
+            name: info
+            for name, info in self.sources.items()
+            if name in modalities or name == "metadata"
+        }
+        return MultiOmicsDataset(
+            name=self.name, modalities=modalities, metadata=self.metadata, sources=sources
+        )
