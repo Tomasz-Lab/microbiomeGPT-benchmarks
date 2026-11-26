@@ -12,7 +12,7 @@ from data.modalities.kinds import (
     NonNumericColumnsError,
     RowsNotSumToTotalError,
 )
-from data.modalities.registry import get_modality_spec_from_registry
+from data.modalities.registry import MODALITIES
 
 KIND = CompositionalTable(total=1.0)
 
@@ -129,4 +129,4 @@ def test_validate_rejects_rows_not_summing_to_total(compositional_table_wrong_su
 def test_registry_spec_accepts_sample_data(modality, sample_file):
     data = pd.read_csv(Path(__file__).parents[1] / "data" / sample_file, index_col=0)
 
-    get_modality_spec_from_registry(modality).validate(data)
+    MODALITIES.get(modality).validate(data)
