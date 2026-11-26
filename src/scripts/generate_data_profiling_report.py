@@ -10,6 +10,8 @@ import sweetviz as sv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
+from data.load import load_dataset
+
 
 class _TeeTextIO(TextIOBase):
     def __init__(self, stream: TextIO, logs: list[str]) -> None:
@@ -26,12 +28,13 @@ class _TeeTextIO(TextIOBase):
 
 def run_data_profiling_report(cfg: DictConfig, **_: object) -> None:
     if cfg.task.source is not None:
-        source = hydra.utils.instantiate(cfg.task.source)
+        df = hydra.utils.instantiate(cfg.task.source).read()
     else:
-        spec = hydra.utils.instantiate(cfg.modataset)  # recipe only, reads nothing
+        # Same loading path as run_training, so the report shows what the model sees.
+        dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
         name = cfg.task.modality
-        source = spec.metadata if name == "metadata" else spec.modalities[name]
-    df = source.read()
+        data = dataset.metadata if name == "metadata" else dataset[name].data
+        df = data.reset_index()  # keep sample_id as a profiled column
     dropped_columns = []
 
     logs: list[str] = []
