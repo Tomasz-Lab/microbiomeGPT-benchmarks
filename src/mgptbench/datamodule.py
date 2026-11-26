@@ -1,9 +1,11 @@
+from functools import cached_property
+
 import lightning.pytorch as L
 import pandas as pd
 from torch.utils.data import DataLoader
 
 from data.modataset.base import MultiOmicsDataset
-from data.splits import Splitter
+from data.splits import Split, Splitter
 from mgptbench.dataset import BacteriaDataset
 from mgptbench.schema import DataSchema
 
@@ -34,9 +36,12 @@ class BacteriaDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.splitter = splitter
 
+    @cached_property
+    def split(self) -> Split:
+        return self.splitter.split(self.dataset.metadata)
+
     def setup(self, stage: str | None = None):
         if stage in ("fit", "validate", None):
-            self.split = self.splitter.split(self.dataset.metadata)
             # list(...) for now: .loc treats a tuple as (row, col). This goes away when the
             # DataModule selects via dataset.select_samples(split.<part>) instead of pandas ~Fasamik39
             self.train_dataset = BacteriaDataset(

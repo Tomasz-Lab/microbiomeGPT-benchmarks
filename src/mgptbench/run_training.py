@@ -28,7 +28,6 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     dataset_spec = hydra.utils.instantiate(cfg.modataset)
     dataset = load_dataset(dataset_spec)
     datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
-    datamodule.setup("fit")
     data_schema = datamodule.data_schema()
 
     if cfg.task.resume_from is not None:
