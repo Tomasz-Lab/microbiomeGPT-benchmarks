@@ -13,7 +13,7 @@ The code has no well-defined abstraction for our modalities. Nowhere in the code
 
 2. For now we implement one kind, `CompositionalTable`, used by both taxonomy and pathways. We also add a placeholder `Graph` kind, which is not used yet, to show that the design supports more kinds.
 
-3. `ModalityKind` is an abstract interface. Each kind declares its own parameters (e.g. `total`, `tolerance` for `CompositionalTable`) and implements `validate()`, which checks data against them.
+3. `ModalityKind` is an abstract interface. Each kind declares its own parameters (e.g. `total`, `rtol`, `atol` for `CompositionalTable`) and implements `validate()`, which checks data against them.
 
 4. `ModalitySpec` describes one concrete, named modality. It holds only the fields shared by all kinds:
    - `name`: stable key used across the system (e.g. `"taxonomy_genus", "taxonomy_species"`),
