@@ -1,4 +1,4 @@
-_target_: gut_former.nmf.run_nmf.load_data_nmf_csv
+_target_: mgptbench.nmf.run_nmf.load_data_nmf_csv
 
 dir: ${oc.env:DATASET_DIR,.}
 kind: pathways

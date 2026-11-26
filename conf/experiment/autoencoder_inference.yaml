@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - /task: run_model_inference
+  - /system: autoencoder
+  - /dataset: csv
+  - /datamodule: bacteria_csv
+  - /trainer: inference
+  - _self_
+
+experiment:
+  name: autoencoder_inference

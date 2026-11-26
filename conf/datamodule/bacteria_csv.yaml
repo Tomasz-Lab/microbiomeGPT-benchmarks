@@ -1,4 +1,4 @@
-_target_: gut_former.datamodule.BacteriaDataModule
+_target_: mgptbench.datamodule.BacteriaDataModule
 
 name: ${dataset.name}
 taxa_multiplier: ${dataset.taxa_multiplier}
