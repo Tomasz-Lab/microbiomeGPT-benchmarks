@@ -1,6 +1,6 @@
 import pytest
 
-from data.splits import RandomSplitter
+from data.splits import HoldoutCohortSplitter, RandomSplitter
 
 # (val_size, test_size, expected sizes of train/val/test) for 40 samples
 SIZE_CASES = [
@@ -38,3 +38,29 @@ def test_stratified_split_keeps_class_proportions(metadata, val_size, test_size,
             continue
         proportions = metadata.loc[list(ids), "condition"].value_counts(normalize=True)
         assert proportions.to_dict() == pytest.approx(expected.to_dict())
+
+
+@pytest.fixture
+def cohort_metadata(metadata):
+    """`metadata` with a "cohort" column: 4 cohorts of 10 samples each."""
+    return metadata.assign(cohort=[f"c{i // 10}" for i in range(40)])
+
+
+def test_holdout_cohort_split_puts_exactly_test_cohorts_in_test(cohort_metadata):
+    split = HoldoutCohortSplitter(group_by="cohort", test_groups=["c3"]).split(cohort_metadata)
+
+    test_cohorts = set(cohort_metadata.loc[list(split.test), "cohort"])
+    train_val_cohorts = set(cohort_metadata.loc[list(split.train + split.val), "cohort"])
+    assert test_cohorts == {"c3"}
+    assert "c3" not in train_val_cohorts
+
+
+def test_holdout_cohort_split_partitions_all_samples(cohort_metadata):
+    split = HoldoutCohortSplitter(group_by="cohort", test_groups=["c3"], val_size=0.25).split(
+        cohort_metadata
+    )
+
+    train, val, test = set(split.train), set(split.val), set(split.test)
+    assert train.isdisjoint(val) and train.isdisjoint(test) and val.isdisjoint(test)
+    assert train | val | test == set(cohort_metadata.index)
+    assert (len(train), len(val), len(test)) == (22, 8, 10)

@@ -52,7 +52,18 @@ class HoldoutCohortSplitter(Splitter):
         val_size: float = 0.1,
         seed: int = 0,
     ):
-        pass
+        self.group_by = group_by
+        self.test_groups = test_groups
+        self.val_size = val_size
+        self.seed = seed
 
     def split(self, metadata: pd.DataFrame) -> Split:
-        pass
+        is_test = metadata[self.group_by].isin(self.test_groups)
+        train, val = train_test_split(
+            metadata[~is_test], test_size=self.val_size, random_state=self.seed
+        )
+        return Split(
+            train=tuple(train.index),
+            val=tuple(val.index),
+            test=tuple(metadata.index[is_test]),
+        )
