@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from data.modalities.base import ModalityKind
@@ -27,11 +28,18 @@ class ModalityValidationError(ValueError):
 class RowsNotSumToTotalError(ModalityValidationError):
     """Raised when some rows do not sum to `total`; offenders are the row sums, by sample id."""
 
-    def __init__(self, modality: str, row_sums: pd.Series, total: float, tolerance: float) -> None:
+    def __init__(
+        self, modality: str, row_sums: pd.Series, total: float, rtol: float, atol: float
+    ) -> None:
         self.total = total
-        self.tolerance = tolerance
+        self.rtol = rtol
+        self.atol = atol
+        allowed = atol + rtol * total
         super().__init__(
-            modality, row_sums, f"sample(s) do not sum to {total} ± {tolerance}", ".6g"
+            modality,
+            row_sums,
+            f"sample(s) do not sum to {total} ± {allowed:.3g} (rtol={rtol}, atol={atol})",
+            ".6g",
         )
 
 
@@ -76,21 +84,27 @@ class CompositionalTable(ModalityKind):
 
     Attributes:
         total: Value every row sums to (e.g. 1.0 for relative abundance, 100 for percent).
-        tolerance: Allowed absolute deviation of a row sum from `total`.
+        rtol: Allowed deviation of a row sum from `total`, relative to `total`.
+            Scales with the unit, so the same value fits fractions (total=1) and percent (total=100).
+        atol: Allowed absolute deviation of a row sum from `total`, added to `rtol * total`.
+            A row passes when `np.isclose(row_sum, total, rtol=rtol, atol=atol)`.
         column_pattern: Regex every column name must fully match (e.g. MetaPhlAn 'k__...|s__...').
             Catches tables from another tool, mixed naming conventions and empty or unnamed columns.
             None skips the check.
     """
 
     total: float
-    tolerance: float
+    rtol: float = 1e-4
+    atol: float = 1e-8
     column_pattern: str | None = None
 
     def __post_init__(self) -> None:
         if self.total <= 0:
             raise ValueError(f"total must be positive, got {self.total}")
-        if self.tolerance < 0:
-            raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
+        if self.rtol < 0:
+            raise ValueError(f"rtol must be non-negative, got {self.rtol}")
+        if self.atol < 0:
+            raise ValueError(f"atol must be non-negative, got {self.atol}")
         if self.column_pattern is not None:
             re.compile(self.column_pattern)
 
@@ -136,12 +150,10 @@ class CompositionalTable(ModalityKind):
             raise NegativeValuesError(name, data[bad].min(axis=1))
 
     def _check_rows_sum_to_total(self, data: pd.DataFrame, name: str) -> None:
-        # skipna=False: a row with NaN sums to NaN, and NaN > x is False,
-        # so such rows are excluded from the check (consistent with "keep_nan").
-        row_sums = data.sum(axis=1, skipna=False)
-        bad = (row_sums - self.total).abs() > self.tolerance
+        row_sums = data.sum(axis=1)
+        bad = ~np.isclose(row_sums, self.total, rtol=self.rtol, atol=self.atol)
         if bad.any():
-            raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.tolerance)
+            raise RowsNotSumToTotalError(name, row_sums[bad], self.total, self.rtol, self.atol)
 
     def select_samples(self, data: pd.DataFrame, ids: Sequence[str]) -> pd.DataFrame:
         return data.loc[data.index.intersection(ids)]

@@ -29,7 +29,6 @@ TAXONOMY = ModalitySpec(
     name="taxonomy",
     kind=CompositionalTable(
         total=1.0,
-        tolerance=1e-6,
     ),
     scope="per_sample",
 )
@@ -37,7 +36,6 @@ PATHWAYS = ModalitySpec(
     name="pathways",
     kind=CompositionalTable(
         total=1.0,
-        tolerance=1e-6,
     ),
     scope="per_sample",
 )

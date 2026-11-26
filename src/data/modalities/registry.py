@@ -15,7 +15,6 @@ TAXONOMY = ModalitySpec(
     name="taxonomy",
     kind=CompositionalTable(
         total=100.0,
-        tolerance=1e-6,
         column_pattern=METAPHLAN_SPECIES,
     ),
     scope="per_sample",
@@ -26,7 +25,6 @@ PATHWAYS = ModalitySpec(
     name="pathways",
     kind=CompositionalTable(
         total=10.0,
-        tolerance=1e-6,
         column_pattern=METACYC_PATHWAY,
     ),
     scope="per_sample",
@@ -37,7 +35,6 @@ TAXONOMY_METAPHLAN = ModalitySpec(
     name="taxonomy_metaphlan",
     kind=CompositionalTable(
         total=100.0,
-        tolerance=1e-6,
         column_pattern=METAPHLAN_SPECIES,
     ),
     scope="per_sample",
@@ -48,7 +45,6 @@ TAXONOMY_SYLPH = ModalitySpec(
     name="taxonomy_sylph",
     kind=CompositionalTable(
         total=100.0,
-        tolerance=1e-6,
         column_pattern=GTDB_SPECIES,
     ),
     scope="per_sample",
@@ -59,7 +55,6 @@ PATHWAYS_HUMANN = ModalitySpec(
     name="pathways_humann",
     kind=CompositionalTable(
         total=1.0,
-        tolerance=1e-6,
         column_pattern=METACYC_PATHWAY,
     ),
     scope="per_sample",

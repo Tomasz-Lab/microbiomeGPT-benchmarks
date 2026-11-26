@@ -9,7 +9,7 @@ from data.modalities.kinds import (
     RowsNotSumToTotalError,
 )
 
-KIND = CompositionalTable(total=1.0, tolerance=1e-6)
+KIND = CompositionalTable(total=1.0)
 
 
 def test_check_rows_sum_to_total_accepts_valid_data(compositional_table):
@@ -19,7 +19,7 @@ def test_check_rows_sum_to_total_accepts_valid_data(compositional_table):
 def test_check_rows_sum_to_total_accepts_row_sums_within_tolerance(
     compositional_table_within_tolerance,
 ):
-    kind = CompositionalTable(total=1.0, tolerance=1e-2)
+    kind = CompositionalTable(total=1.0, rtol=1e-2)
 
     kind._check_rows_sum_to_total(compositional_table_within_tolerance, "taxonomy")
 
@@ -72,7 +72,7 @@ def test_check_no_missing_rejects_nan(compositional_table_missing):
 
 
 def test_check_column_names_accepts_matching_names(compositional_table):
-    kind = CompositionalTable(total=1.0, tolerance=1e-6, column_pattern=r"species_\w+")
+    kind = CompositionalTable(total=1.0, column_pattern=r"species_\w+")
 
     kind._check_column_names(compositional_table, "taxonomy")
 
@@ -80,7 +80,7 @@ def test_check_column_names_accepts_matching_names(compositional_table):
 def test_check_column_names_rejects_names_not_matching_pattern(
     compositional_table_bad_column_names,
 ):
-    kind = CompositionalTable(total=1.0, tolerance=1e-6, column_pattern=r"species_\w+")
+    kind = CompositionalTable(total=1.0, column_pattern=r"species_\w+")
 
     with pytest.raises(InvalidColumnNamesError) as exc_info:
         kind._check_column_names(compositional_table_bad_column_names, "taxonomy")
