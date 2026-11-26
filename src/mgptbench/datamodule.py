@@ -37,6 +37,8 @@ class BacteriaDataModule(L.LightningDataModule):
     def setup(self, stage: str | None = None):
         if stage in ("fit", "validate", None):
             self.split = self.splitter.split(self.dataset.metadata)
+            # list(...) for now: .loc treats a tuple as (row, col). This goes away when the
+            # DataModule selects via dataset.select_samples(split.<part>) instead of pandas ~Fasamik39
             self.train_dataset = BacteriaDataset(
                 self.taxonomy.loc[list(self.split.train)], self.pathways.loc[list(self.split.train)]
             )
