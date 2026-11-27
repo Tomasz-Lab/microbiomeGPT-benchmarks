@@ -38,7 +38,10 @@ class BacteriaDataModule(L.LightningDataModule):
 
     @cached_property
     def split(self) -> Split:
-        return self.splitter.split(self.dataset.metadata)
+        # Temporary: split only samples present in the modalities, in sorted order. Metadata may
+        # contain extra rows (ADR 0008), and train_test_split depends on input row order.
+        # After #85 all per-sample modalities share the same sorted index.
+        return self.splitter.split(self.dataset.metadata.loc[self.taxonomy.index])
 
     def setup(self, stage: str | None = None):
         if stage in ("fit", "validate", None):
