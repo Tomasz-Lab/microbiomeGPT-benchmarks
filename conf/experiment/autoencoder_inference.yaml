@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - /task: run_model_inference
+  - /system: autoencoder
+  - /modataset: gut_metaphlan_humann
+  - /datamodule: bacteria
+  - /trainer: inference
+  - _self_
+
+experiment:
+  name: autoencoder_inference

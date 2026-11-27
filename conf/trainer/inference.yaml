@@ -11,12 +11,12 @@ default_root_dir: ${hydra:runtime.output_dir}
 profiler: null
 
 callbacks:
-  - _target_: gut_former.callbacks.RunLogger
-  - _target_: gut_former.callbacks.PredictionWriter
+  - _target_: mgptbench.callbacks.RunLogger
+  - _target_: mgptbench.callbacks.PredictionWriter
     output_dir: ${hydra:runtime.output_dir}
     # Prediction output -> file; modality outputs use the dataset's feature names as columns
     filenames:
-      taxonomy: pred_taxonomy_${dataset.name}.csv
-      pathways: pred_pathways_${dataset.name}.csv
-      latent: latent_${dataset.name}.csv
+      taxonomy: pred_taxonomy_${modataset.name}.csv
+      pathways: pred_pathways_${modataset.name}.csv
+      latent: latent_${modataset.name}.csv
     column_prefix: z
