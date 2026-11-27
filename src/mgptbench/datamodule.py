@@ -51,6 +51,7 @@ class BacteriaDataModule(L.LightningDataModule):
                 self.taxonomy.loc[list(self.split.val)], self.pathways.loc[list(self.split.val)]
             )
             if self.split.test:
+                # Currently we are doing nothing with the test set, but we want to keep it around for future ~Fasamik39
                 self.test_dataset = BacteriaDataset(
                     self.taxonomy.loc[list(self.split.test)],
                     self.pathways.loc[list(self.split.test)],
