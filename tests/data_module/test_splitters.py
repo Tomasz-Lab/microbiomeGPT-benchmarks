@@ -1,6 +1,7 @@
+import pandas as pd
 import pytest
 
-from data.splits import HoldoutCohortSplitter, RandomSplitter
+from data.splits import HoldoutCohortSplitter, RandomSplitter, Split
 
 # (val_size, test_size, expected sizes of train/val/test) for 40 samples
 SIZE_CASES = [
@@ -64,3 +65,24 @@ def test_holdout_cohort_split_partitions_all_samples(cohort_metadata):
     assert train.isdisjoint(val) and train.isdisjoint(test) and val.isdisjoint(test)
     assert train | val | test == set(cohort_metadata.index)
     assert (len(train), len(val), len(test)) == (22, 8, 10)
+
+
+@pytest.mark.parametrize(
+    ("train", "val", "test"),
+    [
+        pytest.param(("s1", "s2"), ("s2",), (), id="train-val-overlap"),
+        pytest.param(("s1",), ("s2",), ("s1",), id="train-test-overlap"),
+        pytest.param(("s1",), ("s2",), ("s2",), id="val-test-overlap"),
+        pytest.param(("s1", "s1"), ("s2",), (), id="duplicate-within-part"),
+    ],
+)
+def test_split_rejects_sample_in_more_than_one_place(train, val, test):
+    with pytest.raises(ValueError):
+        Split(train=train, val=val, test=test)
+
+
+def test_split_rejects_duplicated_sample_ids_in_metadata(metadata):
+    duplicated = pd.concat([metadata, metadata.iloc[:4]])
+
+    with pytest.raises(ValueError):
+        RandomSplitter(val_size=0.25).split(duplicated)
