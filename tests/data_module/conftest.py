@@ -175,16 +175,18 @@ def loaded_dataset(recipe) -> MultiOmicsDataset:
 
 
 @pytest.fixture
-def dataset(tables) -> MultiOmicsDataset:
+def modalities(tables) -> dict[str, Modality]:
+    """Modalities of the dummy dataset built from `tables`: taxonomy and pathways, both s1-s3."""
+    return {
+        "taxonomy": Modality(spec=TAXONOMY, data=tables["taxonomy"]),
+        "pathways": Modality(spec=PATHWAYS, data=tables["pathways"]),
+    }
+
+
+@pytest.fixture
+def dataset(modalities, tables) -> MultiOmicsDataset:
     """The dummy dataset built directly from `tables`, bypassing files and loading.
 
     For tests of what a dataset can do (e.g. selecting), so they don't fail when loading does.
     """
-    return MultiOmicsDataset(
-        name="dummy",
-        modalities={
-            "taxonomy": Modality(spec=TAXONOMY, data=tables["taxonomy"]),
-            "pathways": Modality(spec=PATHWAYS, data=tables["pathways"]),
-        },
-        metadata=tables["metadata"],
-    )
+    return MultiOmicsDataset(name="dummy", modalities=modalities, metadata=tables["metadata"])

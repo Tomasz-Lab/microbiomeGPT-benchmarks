@@ -8,6 +8,50 @@ from data.modalities.registry import MODALITIES, ModalityName
 from data.sources.base import Source
 
 
+def _format_ids(ids: Iterable[str]) -> str:
+    # key=str: sample IDs read from CSV can be ints, which also must not break the message.
+    ordered = sorted(ids, key=str)
+    preview = ", ".join(str(i) for i in ordered[:5])
+    if len(ordered) > 5:
+        preview += f" (+{len(ordered) - 5} more)"
+    return preview
+
+
+class DatasetValidationError(ValueError):
+    """Base for MultiOmicsDataset cross-modality validation errors."""
+
+
+class SampleAlignmentError(DatasetValidationError):
+    """Per-sample modalities do not share the same sample IDs.
+
+    Attributes:
+        missing: Modality name -> IDs present in another modality but not in this one.
+    """
+
+    def __init__(self, missing: dict[str, frozenset[str]], n_samples: int) -> None:
+        self.missing = missing
+        lines = ["Modalities are not aligned on sample IDs:"]
+        for name in sorted(missing):
+            ids = missing[name]
+            lines.append(f"  {name}: missing {len(ids)} of {n_samples} ({_format_ids(ids)})")
+        super().__init__("\n".join(lines))
+
+
+class MetadataCoverageError(DatasetValidationError):
+    """Some sample IDs present in the modalities are missing from metadata.
+
+    Attributes:
+        missing: IDs present in the modalities but not in metadata.
+    """
+
+    def __init__(self, missing: frozenset[str]) -> None:
+        self.missing = missing
+        super().__init__(
+            f"Metadata is missing {len(missing)} sample(s) present in modalities: "
+            f"{_format_ids(missing)}"
+        )
+
+
 @dataclass(frozen=True)
 class MultiOmicsDatasetSpec:
     """Recipe for a `MultiOmicsDataset`: which modalities and metadata it consists of and how to load them.
@@ -48,6 +92,11 @@ class MultiOmicsDataset:
     metadata: pd.DataFrame
     sources: Mapping[str, Source] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        ids_by_modality = self._per_sample_ids()
+        self._check_samples_aligned(ids_by_modality)
+        self._check_metadata_covers_samples(ids_by_modality)
+
     def __getitem__(self, name: str) -> Modality:
         return self.modalities[name]
 
@@ -71,3 +120,34 @@ class MultiOmicsDataset:
         return MultiOmicsDataset(
             name=self.name, modalities=modalities, metadata=self.metadata, sources=sources
         )
+
+    def _per_sample_ids(self) -> dict[ModalityName, frozenset[str]]:
+        ids_by_modality = {}
+        for name, modality in self.modalities.items():
+            if modality.spec.scope == "per_sample":
+                ids_by_modality[name] = modality.sample_ids()
+        return ids_by_modality
+
+    def _check_samples_aligned(self, ids_by_modality: dict[ModalityName, frozenset[str]]) -> None:
+        all_ids = set()
+        for ids in ids_by_modality.values():
+            all_ids |= ids
+
+        missing = {}
+        for name, ids in ids_by_modality.items():
+            if ids != all_ids:
+                missing[name] = frozenset(all_ids - ids)
+
+        if missing:
+            raise SampleAlignmentError(missing, n_samples=len(all_ids))
+
+    def _check_metadata_covers_samples(
+        self, ids_by_modality: dict[ModalityName, frozenset[str]]
+    ) -> None:
+        metadata_ids = set(self.metadata.index)
+        missing = set()
+        for ids in ids_by_modality.values():
+            missing |= ids - metadata_ids
+
+        if missing:
+            raise MetadataCoverageError(frozenset(missing))
