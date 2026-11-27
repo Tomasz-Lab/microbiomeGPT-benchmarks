@@ -47,6 +47,10 @@ def stack_settings(stack) -> list[tuple[int, float, int]]:
     ]
 
 
+def encoder_stack_settings(encoder) -> list[list[tuple[int, float, int]]]:
+    return [stack_settings(stack) for stack in encoder.stacks]
+
+
 def test_config_builds_the_components_at_gutformer_values(data_schema):
     # Given / When
     model = build_model(data_schema)
@@ -62,7 +66,7 @@ def test_config_builds_the_components_at_gutformer_values(data_schema):
     assert isinstance(model.latent.pooling, MeanPooling)
     assert model.tokenizer.embedding_dim == 128
     assert model.latent.latent_size == 64
-    assert [stack_settings(stack) for stack in model.encoder.stacks] == [
+    assert encoder_stack_settings(model.encoder) == [
         [(2, 0.05, 2048)],
         [(128, 0.1, 2048)],
     ]
@@ -90,7 +94,7 @@ def test_overrides_reach_the_components(data_schema):
 
     # Then
     assert {module.embedding_dim for module in model.children()} == {16}
-    assert [stack_settings(stack) for stack in model.encoder.stacks] == [
+    assert encoder_stack_settings(model.encoder) == [
         [(2, 0.05, 2048), (2, 0.05, 2048)],
         [(16, 0.1, 2048)],
     ]

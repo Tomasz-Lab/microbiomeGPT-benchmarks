@@ -2,28 +2,32 @@ import logging
 import shutil
 from pathlib import Path
 
-import lightning.pytorch as L
 import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 log = logging.getLogger(__name__)
 
 
-def prepare_resume_checkpoint(trainer: L.Trainer, resume_from: str | None) -> str | None:
+def prepare_resume_checkpoint(
+    checkpoint_callbacks: list[ModelCheckpoint], resume_from: str | None
+) -> str | None:
     if resume_from is None:
         return None
-    copied = copy_checkpoints_to_this_run(trainer, resume_from)
+    copied = copy_checkpoints_to_this_run(checkpoint_callbacks, resume_from)
     log.info("Resuming from a copy of %s: %s", resume_from, copied)
     return copied
 
 
-def copy_checkpoints_to_this_run(trainer: L.Trainer, resume_from: str) -> str:
+def copy_checkpoints_to_this_run(
+    checkpoint_callbacks: list[ModelCheckpoint], resume_from: str
+) -> str:
     """Copy the resumed checkpoint and its best checkpoint into this run's checkpoint folder.
 
     The resumed run is only read, never written. ModelCheckpoint restores its best score only when
     the folder stored in the checkpoint is the one it saves to, so the copy stores this run's
     folder and paths. Then best.ckpt changes only when an epoch beats the resumed run's best.
     """
-    this_run_dir = Path(trainer.checkpoint_callback.dirpath)
+    this_run_dir = _save_folder(checkpoint_callbacks[0])
     if Path(resume_from).resolve().parent == this_run_dir.resolve():
         raise ValueError(
             f"task.resume_from is in this run's checkpoint folder ({this_run_dir}); resume in a new "
@@ -32,9 +36,9 @@ def copy_checkpoints_to_this_run(trainer: L.Trainer, resume_from: str) -> str:
 
     checkpoint = torch.load(resume_from, map_location="cpu", weights_only=False)
 
-    for callback in trainer.checkpoint_callbacks:
+    for callback in checkpoint_callbacks:
         state = checkpoint["callbacks"][callback.state_key]
-        new_dir = Path(callback.dirpath)
+        new_dir = _save_folder(callback)
         new_dir.mkdir(parents=True, exist_ok=True)
 
         if callback.monitor is not None and state["best_model_path"]:
@@ -50,6 +54,14 @@ def copy_checkpoints_to_this_run(trainer: L.Trainer, resume_from: str) -> str:
     copied = this_run_dir / Path(resume_from).name
     torch.save(checkpoint, copied)
     return str(copied)
+
+
+def _save_folder(callback: ModelCheckpoint) -> Path:
+    if callback.dirpath is None:
+        raise ValueError(
+            "Resuming needs every ModelCheckpoint to have dirpath set (see conf/trainer)."
+        )
+    return Path(callback.dirpath)
 
 
 def _in_folder(path: str, folder: Path) -> str:

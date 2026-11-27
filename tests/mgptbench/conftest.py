@@ -1,4 +1,5 @@
 import copy
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,7 +84,7 @@ def cfg_train_global(tiny_dataset) -> DictConfig:
 
 
 @pytest.fixture
-def cfg_train(cfg_train_global, tmp_path) -> DictConfig:
+def cfg_train(cfg_train_global, tmp_path) -> Iterator[DictConfig]:
     """A per-test copy whose run outputs (checkpoints, logs) go to tmp_path."""
     cfg = copy.deepcopy(cfg_train_global)
 
@@ -97,7 +98,7 @@ def cfg_train(cfg_train_global, tmp_path) -> DictConfig:
 
 
 @pytest.fixture(scope="session")
-def trained_run_dir(cfg_train_global, tmp_path_factory) -> Path:
+def trained_run_dir(cfg_train_global, tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Output folder of one tiny training run, shared by every test that reads its checkpoints.
 
     Training once keeps the integration suite fast. Tests must only read this folder; any test
@@ -134,7 +135,7 @@ def cfg_infer_global(tiny_dataset) -> DictConfig:
 
 
 @pytest.fixture
-def cfg_infer(cfg_infer_global, tmp_path) -> DictConfig:
+def cfg_infer(cfg_infer_global, tmp_path) -> Iterator[DictConfig]:
     """A per-test copy whose predictions go to tmp_path."""
     cfg = copy.deepcopy(cfg_infer_global)
 

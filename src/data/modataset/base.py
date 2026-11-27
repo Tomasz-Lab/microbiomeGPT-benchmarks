@@ -129,7 +129,7 @@ class MultiOmicsDataset:
         return ids_by_modality
 
     def _check_samples_aligned(self, ids_by_modality: dict[ModalityName, frozenset[str]]) -> None:
-        all_ids = set()
+        all_ids: set[str] = set()
         for ids in ids_by_modality.values():
             all_ids |= ids
 
@@ -145,7 +145,7 @@ class MultiOmicsDataset:
         self, ids_by_modality: dict[ModalityName, frozenset[str]]
     ) -> None:
         metadata_ids = set(self.metadata.index)
-        missing = set()
+        missing: set[str] = set()
         for ids in ids_by_modality.values():
             missing |= ids - metadata_ids
 

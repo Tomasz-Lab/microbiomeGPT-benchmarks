@@ -10,7 +10,7 @@ from data.sources.base import Source, SourceInfo
 class CsvSource(Source[pd.DataFrame]):
     """Reads a CSV file into a raw DataFrame."""
 
-    path: Path
+    path: str | Path
 
     def read(self) -> pd.DataFrame:
         return pd.read_csv(self.path)
@@ -23,7 +23,7 @@ class CsvSource(Source[pd.DataFrame]):
 class ParquetSource(Source[pd.DataFrame]):
     """Reads a Parquet file into a raw DataFrame."""
 
-    path: Path
+    path: str | Path
 
     def read(self) -> pd.DataFrame:
         return pd.read_parquet(self.path)

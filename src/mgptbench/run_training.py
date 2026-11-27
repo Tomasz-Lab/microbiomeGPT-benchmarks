@@ -58,5 +58,5 @@ def run_training(cfg: DictConfig, **_: object) -> None:
         for logger in trainer.loggers:
             logger.log_hyperparams(hparams)
 
-    ckpt_path = prepare_resume_checkpoint(trainer, cfg.task.resume_from)
+    ckpt_path = prepare_resume_checkpoint(trainer.checkpoint_callbacks, cfg.task.resume_from)
     trainer.fit(system, datamodule=datamodule, ckpt_path=ckpt_path)

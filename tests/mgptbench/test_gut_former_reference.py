@@ -34,7 +34,8 @@ REFERENCE_PATH = Path(__file__).parents[1] / "data" / "gut_former_reference.pt"
 
 @pytest.fixture(scope="module")
 def reference() -> dict:
-    return torch.load(REFERENCE_PATH, map_location="cpu", weights_only=True)
+    reference: dict = torch.load(REFERENCE_PATH, map_location="cpu", weights_only=True)
+    return reference
 
 
 def build_small_gut_former(data_schema: DataSchema, embedding_dim: int, latent_size: int):

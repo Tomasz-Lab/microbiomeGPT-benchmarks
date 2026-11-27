@@ -144,6 +144,7 @@ class NMF(BaseEstimator, TransformerMixin):
             raise RuntimeError("Model is not yet fitted. Call .fit() first.")
 
         X_arr = X.values if isinstance(X, pd.DataFrame) else X
+        W: Matrix
         W, _, _ = non_negative_factorization(
             X_arr,
             n_components=self.n_components,
@@ -157,6 +158,8 @@ class NMF(BaseEstimator, TransformerMixin):
         return W
 
     def evaluate(self, X_val: pd.DataFrame | Matrix) -> NMFEvalResult:
+        if self.H_ is None:
+            raise RuntimeError("Model is not yet fitted. Call .fit() first.")
         W_val = self.transform(X_val)
         X_arr = X_val.values if isinstance(X_val, pd.DataFrame) else X_val
 

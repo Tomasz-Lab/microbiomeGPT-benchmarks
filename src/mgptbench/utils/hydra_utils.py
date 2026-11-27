@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 from typing import Any
 
 import hydra
@@ -9,7 +10,7 @@ from settings.hydra import ALLOWED_TARGET_PREFIXES
 log = logging.getLogger(__name__)
 
 
-def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
+def cfg_to_plain_dict(cfg: DictConfig | ListConfig) -> dict[Any, Any]:
     """Resolved copy of a config node as plain Python types."""
     container = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     if not isinstance(container, dict):
@@ -20,13 +21,14 @@ def cfg_to_plain_dict(cfg: DictConfig) -> dict[str, Any] | None:
 # this wraper is need only because later
 # if we want to replace hydra with another config system,
 # we can do it here easily ~Fasamik39
-def instantiate(config: DictConfig | dict) -> Any:
-    """Build the object described by a config with a `_target_` key."""
+def instantiate(config: DictConfig | dict | None) -> Any:
+    """Build the object described by a config with a `_target_` key; None stays None."""
     _check_targets(config)
     return hydra.utils.instantiate(config)
 
 
 def _check_targets(config: Any) -> None:
+    children: Iterable[Any]
     if isinstance(config, dict | DictConfig):
         target = config.get("_target_")
         if target is not None and not str(target).startswith(ALLOWED_TARGET_PREFIXES):
@@ -49,5 +51,5 @@ def load_from_checkpoint(
     The class rebuilds itself from the hyperparameters stored in the checkpoint, so only
     `_target_` is read from the config.
     """
-    target_class = hydra.utils.get_class(config["_target_"])
-    return target_class.load_from_checkpoint(checkpoint_path, map_location=map_location)
+    restore = hydra.utils.get_method(f"{config['_target_']}.load_from_checkpoint")
+    return restore(checkpoint_path, map_location=map_location)
