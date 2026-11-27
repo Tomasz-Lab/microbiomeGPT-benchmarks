@@ -4,6 +4,5 @@ _partial_: true
 name: model_inference
 
 # Lightning .ckpt from autoencoder_training (best or last); the model is rebuilt from it
-# Legacy .pt state_dicts: use experiment=gut_former_inference_legacy
 checkpoint_path: null
 verbose: true
