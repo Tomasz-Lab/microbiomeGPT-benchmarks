@@ -115,8 +115,7 @@ class CompositionalTable(ModalityKind):
 
     def validate(self, data: pd.DataFrame, name: str) -> pd.DataFrame:
         self._check_unique_sample_ids(data, name)
-        if self.column_pattern is not None:
-            self._check_column_names(data, name)
+        self._check_column_names(data, name)
         self._check_is_numeric(data, name)
         self._check_no_missing(data, name)
         self._check_non_negative(data, name)
@@ -131,6 +130,8 @@ class CompositionalTable(ModalityKind):
             raise DuplicateSampleIdsError(name, id_counts[bad])
 
     def _check_column_names(self, data: pd.DataFrame, name: str) -> None:
+        if self.column_pattern is None:
+            return
         pattern = re.compile(self.column_pattern)
         bad = [
             (column, position)
