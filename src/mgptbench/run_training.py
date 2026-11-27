@@ -28,7 +28,6 @@ def run_training(cfg: DictConfig, **_: object) -> None:
     dataset_spec = hydra.utils.instantiate(cfg.modataset)
     dataset = load_dataset(dataset_spec)
     datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
-    datamodule.setup("fit")
     data_schema = datamodule.data_schema()
 
     if cfg.task.resume_from is not None:
@@ -46,13 +45,15 @@ def run_training(cfg: DictConfig, **_: object) -> None:
 
     # D: 0003, 0004
     if trainer.loggers:
+        output_dir = HydraConfig.get().runtime.output_dir
         hparams = {
             "config": cfg_to_plain_dict(cfg),
-            "code": git_state(HydraConfig.get().runtime.output_dir),
+            "code": git_state(output_dir),
             "env": environment_state(trainer),
             "dataset_stats": data_state(
                 [source.describe().location for source in dataset.sources.values()],
-                datamodule.split_ids,
+                datamodule.split,
+                output_dir,
             ),
         }
         for logger in trainer.loggers:

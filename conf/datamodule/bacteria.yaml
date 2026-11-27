@@ -5,5 +5,11 @@ _partial_: true  # the loaded dataset is passed in by the task
 taxonomy: taxonomy_metaphlan
 pathways: pathways_humann
 batch_size: 16
-val_size: 0.1
-seed: 0
+
+# How samples are assigned to train/val/test; swap _target_ for another Splitter
+splitter:
+  _target_: data.splits.RandomSplitter
+  val_size: 0.1
+  test_size: 0.0
+  seed: 0
+  stratify_by: null

@@ -29,7 +29,6 @@ def run_inference(cfg: DictConfig, **_: object) -> None:
 
     dataset = load_dataset(hydra.utils.instantiate(cfg.modataset))
     datamodule = hydra.utils.instantiate(cfg.datamodule)(dataset=dataset)
-    datamodule.setup("predict")
 
     verify_checkpoint_schema(cfg.task.checkpoint_path, datamodule.data_schema())
 

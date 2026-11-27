@@ -55,6 +55,8 @@ Restore the exact code of any run, even with uncommitted changes.
 - per split (train, val, …) 
     - its sample count
     - a hash of its sample IDs
+- full sample IDs of each split stay local in `split.json` in the run directory (like
+  `code.patch`); only its file name is logged, so splits of two runs can be compared exactly
 
 ### 5. Training configuration
 - full Hydra config (model architecture, hyperparameters, number of epochs, etc.)
