@@ -21,7 +21,7 @@ def test_every_cell_is_held_out_exactly_once(cell_id_matrix):
     seen = np.zeros_like(X)
 
     for A, *_ in bicv.make_folds(X, h=3):
-        np.add.at(seen.ravel(), A.ravel(), 1)
+        np.add.at(seen.ravel(), A.ravel().astype(np.intp), 1)
 
     np.testing.assert_array_equal(seen, np.ones_like(X))
 

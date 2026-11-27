@@ -1,5 +1,7 @@
 """[purbancz] Unit tests of the reusable component implementations."""
 
+from typing import TypedDict
+
 import pytest
 import torch
 from omegaconf import OmegaConf
@@ -21,7 +23,16 @@ from mgptbench.schema import DataSchema
 EMBEDDING_DIM = 8
 LATENT_SIZE = 4
 BATCH_SIZE = 3
-STACK = {"num_layers": 1, "num_heads": 2, "dropout": 0.0, "feedforward_dim": 16}
+
+
+class StackSettings(TypedDict):
+    num_layers: int
+    num_heads: int
+    dropout: float
+    feedforward_dim: int
+
+
+STACK: StackSettings = {"num_layers": 1, "num_heads": 2, "dropout": 0.0, "feedforward_dim": 16}
 
 
 class FirstTokenPooling(Pooling):
@@ -121,6 +132,17 @@ def test_encoder_concatenates_modalities_into_one_sequence(data_schema, inputs):
     assert encoded.shape == (BATCH_SIZE, 2 + 3, EMBEDDING_DIM)
 
 
+def first_layer_settings(stack) -> tuple[int, int, float, int]:
+    """[purbancz] Layer count and first-layer settings"""
+    layer = stack.layers[0]
+    return (
+        len(stack.layers),
+        layer.self_attn.num_heads,
+        layer.dropout.p,
+        layer.linear1.out_features,
+    )
+
+
 def test_encoder_builds_each_stack_with_its_own_settings():
     # Given: stack settings as Hydra passes them from yaml
     stacks = OmegaConf.create(
@@ -134,11 +156,7 @@ def test_encoder_builds_each_stack_with_its_own_settings():
     encoder = JointTransformerEncoder(EMBEDDING_DIM, stacks=stacks)
 
     # Then
-    built = [
-        (len(stack.layers), layer.self_attn.num_heads, layer.dropout.p, layer.linear1.out_features)
-        for stack in encoder.stacks
-        for layer in stack.layers[:1]
-    ]
+    built = [first_layer_settings(stack) for stack in encoder.stacks]
     assert built == [(2, 2, 0.05, 16), (1, 8, 0.1, 32)]
 
 
@@ -209,10 +227,12 @@ def test_latent_expands_back_to_embedding_dim():
 
 def test_latent_keeps_the_pooling_initialization():
     # When
-    latent = PooledLinearLatent(EMBEDDING_DIM, LATENT_SIZE, pooling=LinearPooling())
+    pooling = LinearPooling()
+    latent = PooledLinearLatent(EMBEDDING_DIM, LATENT_SIZE, pooling=pooling)
 
     # Then
-    projection = latent.pooling.projection
+    assert latent.pooling is pooling
+    projection = pooling.projection
     assert torch.all(projection.weight == 1)
     assert torch.all(projection.bias == 1)
 
