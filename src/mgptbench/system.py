@@ -1,11 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Any
 
-import hydra
 import lightning.pytorch as L
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 from torchmetrics import MeanMetric, MeanSquaredError, MetricCollection, MinMetric
 
 from mgptbench.models.autoencoder import AutoEncoderModel, AutoEncoderOutput
@@ -151,9 +149,3 @@ def verify_checkpoint_schema(path: str | Path, data_schema: DataSchema):
         )
     expected = model_schema["data_schema"]["feature_names"]
     check_schema(DataSchema.from_dict(expected), data_schema)
-
-
-def build_model(model_config, data_schema: DataSchema) -> nn.Module | Any:
-    """Instantiate the model config with the data schema."""
-    # Not instantiate(..., data_schema=...): Hydra would merge the dataclass into the config
-    return hydra.utils.instantiate(model_config, _partial_=True)(data_schema=data_schema)

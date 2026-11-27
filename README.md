@@ -85,15 +85,12 @@ The default experiment is `nmf_pathways`. Available experiments are:
 |---|---|
 | `autoencoder_training` | Train an autoencoder, GUT-FORMer by default (PyTorch Lightning) |
 | `autoencoder_inference` | Run inference from an autoencoder checkpoint (PyTorch Lightning) |
-| `gut_former_training_legacy` | Train GUT-FORMer with the original loop |
-| `gut_former_inference_legacy` | Run GUT-FORMer inference with the original script |
 | `nmf_pathways` | Run NMF (pathways by default) |
 | `bicv_pathways` | Select an NMF rank using bi-cross-validation |
 
 Experiments compose the `task`, `model`, and `modataset` config groups (the autoencoder experiments
-also compose `datamodule` and `trainer`; the legacy GUT-FORMer experiments use `dataset` instead of
-`modataset`). Swap a group with `modataset=gut_sylph_humann` and override settings using dotted keys, for example
-`trainer.max_epochs=55`. To inspect the
+also compose `datamodule`, `system` and `trainer`). Swap a group with `modataset=gut_sylph_humann`
+and override settings using dotted keys, for example `trainer.max_epochs=55`. To inspect the
 resolved settings without running a workflow:
 
 ```bash
@@ -164,12 +161,9 @@ Training settings are supplied as Hydra overrides:
 | `trainer.profiler` | `null` | Profiler: `simple`, `advanced` or `pytorch` (off by default) |
 | `datamodule.batch_size` | `16` | Batch size |
 | `datamodule.val_size` | `0.1` | Fraction of samples held out for validation |
-| `task.optimizer.lr` | `1.893292917167e-4` | Learning rate |
+| `system.optimizer.lr` | `1.893292917167e-4` | Learning rate |
 | `task.seed` | `0` | Random seed |
 | `task.resume_from` | `null` | Lightning `.ckpt` to resume (restores optimizer state and epoch) |
-| `model.embedding_dim` | `128` | Embedding dimension |
-| `model.latent_size` | `64` | Latent space dimension |
-| `task.init_weights` | `null` | Model weights to start from (`.ckpt` or legacy `.pt`); optimizer starts fresh |
 
 Outputs in the Hydra run directory:
 
@@ -183,7 +177,7 @@ On Apple Silicon `auto` selects MPS, where training fails: the loss uses `torch.
 backward pass is not implemented for MPS. Train there with `trainer.accelerator=cpu`; inference
 has no backward pass and runs on MPS.
 
-### Resume and fine-tuning
+### Resume training
 
 Resume an interrupted run from a Lightning checkpoint (`trainer.max_epochs` is the total, not the
 number of additional epochs):
@@ -203,22 +197,12 @@ checkpoint is chosen across all epochs, before and after resuming. Resuming from
 checkpoint of a finished run therefore continues that run and overwrites its `last.ckpt`. To
 branch off instead, copy the checkpoint to a new folder first.
 
-Fine-tune from existing weights, for example on another dataset, with a fresh optimizer:
-
-```bash
-uv run python src/mgptbench/main.py \
-  experiment=autoencoder_training \
-  modataset=my_dataset \
-  trainer.max_epochs=1000 \
-  task.init_weights=/path/to/checkpoint.ckpt
-```
-
-With a Lightning checkpoint, both `task.resume_from` and `task.init_weights` fail early if the
-dataset's taxonomy or pathway columns (names or order) differ from the checkpoint's.
+`task.resume_from` fails early if the dataset's taxonomy or pathway columns (names or order)
+differ from the checkpoint's.
 
 ### Inference
 
-Inference requires a trained checkpoint, a Lightning `.ckpt`:
+Inference requires a trained Lightning `.ckpt` checkpoint:
 
 ```bash
 uv run python src/mgptbench/main.py \
@@ -238,19 +222,6 @@ Inference outputs (`latent_{dataset}.csv`, `pred_taxonomy_{dataset}.csv`, and
 callback. Its `filenames` setting in `conf/trainer/inference.yaml` maps each model output to a
 file: modality outputs take the dataset's feature names as columns, and other outputs (the latent
 space) get `{column_prefix}{i}` columns (`z0`, `z1`, …).
-
-### Legacy scripts
-
-The original scripts are kept in `src/mgptbench/legacy/` and run with the `*_legacy`
-experiments. They use the old settings (`task.epochs`, `task.checkpoint_path`) and write a bare
-`{date}_{dataset}_checkpoint.pt` state dict:
-
-```bash
-uv run python src/mgptbench/main.py experiment=gut_former_training_legacy task.epochs=55
-uv run python src/mgptbench/main.py \
-  experiment=gut_former_inference_legacy \
-  task.checkpoint_path=/path/to/checkpoint.pt
-```
 
 ## 🧬 NMF
 
